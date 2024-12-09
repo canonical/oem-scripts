@@ -38,6 +38,38 @@ if [ $# -lt 3 ]; then
     exit
 fi
 
+is_correct_sha256sum() {
+    local filepath="$1"
+    local sha256file="$2"
+    local calculated_sha256
+    local filename
+    local expected_sha256
+
+    # Check if providedfiles exist
+    [ ! -f "$filepath" ] && echo "Error: File $filepath does not exist" && return 1
+    [ ! -f "$sha256file" ] && echo "Error: SHA256 file $sha256file does not exist" && return 1
+
+    # Get expected sha256
+    filename="./$(basename "$filepath")"
+    expected_sha256=$(grep "$filename" "$sha256file" | cut -d' ' -f1)
+    if [ -z "$expected_sha256" ]; then
+        echo "Error: Could not find SHA256 hash for $filename in $sha256file"
+        return 1
+    fi
+
+    # Verify sha256 of the file
+    calculated_sha256=$(sha256sum "$filepath" | cut -d' ' -f1)
+    if [ "$calculated_sha256" = "$expected_sha256" ]; then
+        echo "SHA256 verification successful for $filepath"
+        return 0
+    else
+        echo "SHA256 verification failed for $filepath"
+        echo "Expected: $expected_sha256"
+        echo "Got:      $calculated_sha256"
+        return 1
+    fi
+}
+
 # Environment variables
 LAUNCHPAD_USER=${LAUNCHPAD_USER:-"$USER"}
 RCLONE_CONFIG_PATH=${RCLONE_CONFIG_PATH:-"$HOME/.config/rclone/rclone.conf"}
@@ -79,14 +111,18 @@ while :; do
             fi
             ISO=$(basename "$2")
             ISO_PATH="$URL_CACHE_PATH/$ISO"
-            if [ -f "$ISO_PATH" ]; then
+            ISO_SHA256_URL="${2%.iso}.sha256sum"
+            if [ -f "$ISO_PATH" ] && [ -f "$ISO_PATH.sha256sum" ]; then
                 echo "$ISO has been downloaded"
             else
+                # Remove any partial downloads
+                rm -f "$ISO_PATH" "$ISO_PATH.sha256sum"
                 mkdir -p "$URL_CACHE_PATH" || true
                 pushd "$URL_CACHE_PATH"
                 if [ -n "$JENKINS_IP" ] && [[ "$2" =~ $JENKINS_IP ]]; then
                     if [ -n "$JENKINS_USER_ID" ] && [ -n "$JENKINS_USER_TOKEN" ]; then
                         curl -u "$JENKINS_USER_ID:$JENKINS_USER_TOKEN" -O "$2"
+                        curl -u "$JENKINS_USER_ID:$JENKINS_USER_TOKEN" -O "$ISO_SHA256_URL"
                     else
                         echo "No USER ID and USER TOKEN configured for jenkins operations"
                     fi
@@ -95,18 +131,34 @@ while :; do
                         if [[ "$2" =~ "partners" ]]; then
                             PROJECT=$(echo "$2" | cut -d "/" -f 5)
                             FILEPATH=$(echo "$2" | sed "s/.*share\///g")
+                            FILEPATH_SHA256=$(echo "$ISO_SHA256_URL" | sed "s/.*share\///g")
                         else
                             PROJECT=$(echo "$2" | cut -d "/" -f 5)
                             FILEPATH=$(echo "$2" | sed "s/.*$PROJECT\///g")
+                            FILEPATH_SHA256=$(echo "$ISO_SHA256_URL" | sed "s/.*$PROJECT\///g")
                         fi
                         rclone --config "$RCLONE_CONFIG_PATH" sync "$PROJECT":"$FILEPATH" .
+                        rclone --config "$RCLONE_CONFIG_PATH" sync "$PROJECT":"$FILEPATH_SHA256" .
                     else
                         echo "Can't find rclone config for webdav manipulation"
                     fi
                 else
                     curl -O "$2"
+                    if ! curl -f -O "$ISO_SHA256_URL"; then
+                        # Expect that other URLs must also provide our SHA
+                        echo "Failed to download SHA256SUM file from $ISO_SHA256_URL"
+                        exit 1
+                    fi
                 fi
                 popd
+            fi
+
+            if ! is_correct_sha256sum "$ISO_PATH" "$ISO_PATH.sha256sum"; then
+                echo "SHA256 verification failed for $ISO_PATH"
+                echo "Removing the .iso and .sha256sum files"
+                rm -f "$ISO_PATH" "$ISO_PATH.sha256sum"
+                echo "Please re-run the job to download again"
+                exit 1
             fi
             shift 2;;
         ('--iso')
