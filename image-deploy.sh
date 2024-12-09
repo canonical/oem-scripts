@@ -59,15 +59,15 @@ is_correct_sha256sum() {
 
     # Verify sha256 of the file
     calculated_sha256=$(sha256sum "$filepath" | cut -d' ' -f1)
-    if [ "$calculated_sha256" = "$expected_sha256" ]; then
-        echo "SHA256 verification successful for $filepath"
-        return 0
-    else
+    if [ "$calculated_sha256" != "$expected_sha256" ]; then
         echo "SHA256 verification failed for $filepath"
         echo "Expected: $expected_sha256"
         echo "Got:      $calculated_sha256"
         return 1
     fi
+
+    echo "SHA256 verification successful for $filepath"
+    return 0
 }
 
 # Environment variables
@@ -111,12 +111,12 @@ while :; do
             fi
             ISO=$(basename "$2")
             ISO_PATH="$URL_CACHE_PATH/$ISO"
+            ISO_SHA256_PATH="${ISO_PATH%.iso}.sha256sum"
             ISO_SHA256_URL="${2%.iso}.sha256sum"
-            if [ -f "$ISO_PATH" ] && [ -f "$ISO_PATH.sha256sum" ]; then
+            if [ -f "$ISO_PATH" ] && [ -f "$ISO_SHA256_PATH" ]; then
                 echo "$ISO has been downloaded"
             else
-                # Remove any partial downloads
-                rm -f "$ISO_PATH" "$ISO_PATH.sha256sum"
+                rm -f "$ISO_PATH" "$ISO_SHA256_PATH"  # Remove any partial downloads
                 mkdir -p "$URL_CACHE_PATH" || true
                 pushd "$URL_CACHE_PATH"
                 if [ -n "$JENKINS_IP" ] && [[ "$2" =~ $JENKINS_IP ]]; then
@@ -153,10 +153,10 @@ while :; do
                 popd
             fi
 
-            if ! is_correct_sha256sum "$ISO_PATH" "$ISO_PATH.sha256sum"; then
+            if ! is_correct_sha256sum "$ISO_PATH" "$ISO_SHA256_PATH"; then
                 echo "SHA256 verification failed for $ISO_PATH"
                 echo "Removing the .iso and .sha256sum files"
-                rm -f "$ISO_PATH" "$ISO_PATH.sha256sum"
+                rm -f "$ISO_PATH" "$ISO_SHA256_PATH"
                 echo "Please re-run the job to download again"
                 exit 1
             fi
