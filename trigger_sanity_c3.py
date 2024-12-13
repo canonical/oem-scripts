@@ -32,6 +32,7 @@ import configparser
 import jenkins
 import ast
 from pathlib import Path
+import time
 
 OEM_SCRIPTS_CONFIG = Path.home() / ".config" / "oem-scripts" / "config.ini"
 C3_V2_API_CLI = os.path.join(os.path.dirname(__file__), "c3-v2-api.py")
@@ -275,9 +276,8 @@ def get_supported_cids(available_cids, iso_url, platform_info_dir):
                     ):
                         if not has_existing_queue(cid):
                             logger.info(
-                                f"Warning: No Testflinger Queues for CID: {cid}. "
+                                f"Warning: No Testfligner Queues for CID: {cid}. Skip."
                             )
-                            logger.info("Skip.")
                             continue
                         logger.info(f"Found supported CID: {cid} (tag: {tag})")
                         supported_cids.append(cid)
@@ -297,19 +297,70 @@ def get_supported_cids(available_cids, iso_url, platform_info_dir):
 
 def trigger_job(server, job_name, parameters, dry_run=False):
     """Trigger the Jenkins job with given parameters."""
+    MAX_ATTEMPTS = 20
+    SLEEP_TIME = 3
     try:
         if dry_run:
             logger.info(f"[DRY RUN] Would trigger job: {job_name} with parameters:")
             for key, value in parameters.items():
                 logger.info(f"  {key}: {value}")
+            return None
         else:
-            server.build_job(job_name, parameters=parameters)
-            logger.info(f"Successfully triggered job: {job_name}")
-            return True
+            # Keep the last build number before we trigger
+            last_build_number = server.get_job_info(job_name)["lastBuild"]["number"]
+            logger.debug(f"last_build_number: {last_build_number}")
 
+            # Trigger job and get new build number
+            server.build_job(job_name, parameters=parameters)
+            for attempt in range(MAX_ATTEMPTS):
+                current_build_number = server.get_job_info(job_name)["lastBuild"][
+                    "number"
+                ]
+                logger.debug(f"current_build_number: {current_build_number}")
+                if current_build_number > last_build_number:
+                    logger.info(
+                        f"Successfully triggered {job_name} build {current_build_number}"
+                    )
+                    return current_build_number
+                time.sleep(SLEEP_TIME)
+
+            # Build was not triggered
+            logger.error(
+                f"Failed to trigger {job_name} after build {last_build_number}"
+            )
+            return False
     except Exception as e:
         logger.error(f"Failed to trigger job {job_name}: {e}")
         return False
+
+
+def verify_job_success(server, job_name, build_number):
+    """Poll the Jenkins job status until it completes and return True if successful."""
+    # 90 minutes to provision the image only
+    SLEEP_TIME = 180
+    MAX_ATTEMPTS = 30
+
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            # Fetch job info
+            status = server.get_build_info(job_name, build_number).get("result")
+            if status is None:
+                logger.info(
+                    f"Build {build_number} is still running... Sleep {SLEEP_TIME} sec..."
+                )
+                time.sleep(SLEEP_TIME)
+            elif status == "SUCCESS":
+                logger.info(f"Build {build_number} completed successfully.")
+                return True
+            else:
+                logger.error(f"Build {build_number} failed with status: {status}")
+                return False
+        except Exception as e:
+            logger.error(f"Error fetching job info on attempt {attempt}: {e}")
+            time.sleep(SLEEP_TIME)
+
+    logger.error("Max attempts reached. Unable to verify job status.")
+    return False
 
 
 def parse_arguments():
@@ -384,6 +435,11 @@ def parse_arguments():
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Run without triggering Jenkins jobs"
+    )
+    parser.add_argument(
+        "--wait-success",
+        action="store_true",
+        help="Wait for the job to succeed after trigger (single CID only)",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
@@ -472,7 +528,10 @@ def main():
             logger.error("CID does not have testflinger queue")
             sys.exit(1)
         parameters["CID"] = args.cid
-        trigger_job(jenkins_server, job_name, parameters, args.dry_run)
+        build_number = trigger_job(jenkins_server, job_name, parameters, args.dry_run)
+        if not args.dry_run and args.wait_success and build_number:
+            # poll the job status untill it succeed
+            verify_job_success(jenkins_server, job_name, build_number)
     else:
         # Get CIDs which are online in Lab4 (IoT and PC)
         available_cids = get_linked_labresources()
@@ -490,7 +549,8 @@ def main():
 
         for cid in supported_cids:
             parameters["CID"] = cid
-            trigger_job(jenkins_server, job_name, parameters, args.dry_run)
+            if not trigger_job(jenkins_server, job_name, parameters, args.dry_run):
+                logger.error(f"Failed to trigger job for CID: {cid}")
 
 
 if __name__ == "__main__":
