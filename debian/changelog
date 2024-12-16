@@ -1,3 +1,9 @@
+oem-scripts (2.32) noble; urgency=medium
+
+  * trigger_sanity_c3.py: verify job was triggered and add --wait-success flag
+
+ -- Artur Pak <artur.pak@canonical.com>  Mon, 16 Dec 2024 20:37:19 +0800
+
 oem-scripts (2.31) noble; urgency=medium
 
   [ Kai-Chuan Hsieh ]
