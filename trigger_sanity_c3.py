@@ -86,7 +86,7 @@ def get_jenkins_connection():
 
     try:
         return jenkins.Jenkins(
-            jenkins_url, username=jenkins_user, password=jenkins_token
+            jenkins_url, username=jenkins_user, password=jenkins_token, timeout=60
         )
     except Exception as e:
         logger.error(f"Failed to connect to Jenkins: {e}")
@@ -95,6 +95,7 @@ def get_jenkins_connection():
 
 def clean_json_string(s):
     """Convert Python literal string from subprocess output to valid JSON string."""
+    s = s.strip()
     try:
         # First try direct JSON parsing
         return json.loads(s)
@@ -215,7 +216,6 @@ def has_existing_queue(cid):
         if not data:
             logger.warning(f"Failed to fetch queue details for CID: {cid}")
             return False
-
         queues = data.get("queues")
         if queues:
             logger.debug(f"CID {cid} has existing queues: {queues}")
@@ -529,6 +529,9 @@ def main():
             sys.exit(1)
         parameters["CID"] = args.cid
         build_number = trigger_job(jenkins_server, job_name, parameters, args.dry_run)
+        if not build_number:
+            logger.error(f"Failed to trigger job: {job_name}")
+            sys.exit(1)
         if not args.dry_run and args.wait_success and build_number:
             # poll the job status untill it succeed
             verify_job_success(jenkins_server, job_name, build_number)
