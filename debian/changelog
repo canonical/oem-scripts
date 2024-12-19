@@ -1,3 +1,9 @@
+oem-scripts (2.33) noble; urgency=medium
+
+  * trigger_sanity_c3.py: Add timeout to Jenkins connection.
+
+ -- Artur Pak <artur.pak@canonical.com>  Thu, 19 Dec 2024 15:47:52 +0800
+
 oem-scripts (2.32) noble; urgency=medium
 
   * trigger_sanity_c3.py: verify job was triggered and add --wait-success flag
