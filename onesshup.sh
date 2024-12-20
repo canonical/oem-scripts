@@ -1,5 +1,13 @@
 #!/bin/bash
 # vim: noet
+#
+# This script installs OneSSH on the target machines. It is a simple wrapper
+# around the OneSSH installation script which is intended to be run on the
+# local machine.
+#
+# Hard-coded:
+# https://ubu.link/onesshup is a short link to the OneSSH installation script.
+# You may manage this short link at: https://ubu.link/admin/manage
 
 usage() {
 	echo "Usage: $0 <TARGET_IP1> [TARGET_IP2 ... TARGET_IPN]"
