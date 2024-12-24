@@ -1,3 +1,9 @@
+oem-scripts (2.34) noble; urgency=medium
+
+  * trigger_sanity_c3.py: Exit script when triggered job failed with --wait-success
+
+ -- Artur Pak <artur.pak@canonical.com>  Tue, 24 Dec 2024 14:50:39 +0800
+
 oem-scripts (2.33) noble; urgency=medium
 
   * trigger_sanity_c3.py: Add timeout to Jenkins connection.
