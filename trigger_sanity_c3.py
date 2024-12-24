@@ -534,7 +534,11 @@ def main():
             sys.exit(1)
         if not args.dry_run and args.wait_success and build_number:
             # poll the job status untill it succeed
-            verify_job_success(jenkins_server, job_name, build_number)
+            if not verify_job_success(jenkins_server, job_name, build_number):
+                logger.error(f"Triggered job was not successful: {job_name}")
+                sys.exit(1)
+            logger.info(f"Job completed successfully: {job_name}")
+            return True
     else:
         # Get CIDs which are online in Lab4 (IoT and PC)
         available_cids = get_linked_labresources()
