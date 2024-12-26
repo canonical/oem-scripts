@@ -24,6 +24,8 @@ Environment variables:
     CONFIG_REPO_REMOTE      The remote URL of the config repo, default
                             git+ssh://\$LAUNCHPAD_USER@git.launchpad.net/~oem-solutions-engineers/oem-dev-tools/+git/ubuntu-oem-image-builder
     CONFIG_REPO_BRANCH      The branch of the config repo, default main
+    CONFIG_REPO_PATH        The local path of the config repo.
+                            If not set, will clone the repo to \$CACHE_ROOT
     INTERACTIVE             The flag to enable the interactive mode, default false
 Examples:
     $0 -u ubuntu --iso /home/ubuntu/Downloads/somerville-noble-hwe-20240501-65.iso 10.42.0.161
@@ -87,7 +89,7 @@ STORE_PART=""
 TIMEOUT=3600
 CACHE_ROOT="$HOME/.cache/oem-scripts"
 URL_CACHE_PATH="$CACHE_ROOT/images"
-CONFIG_REPO_PATH="$CACHE_ROOT/ubuntu-oem-image-builder"
+CONFIG_REPO_PATH="${CONFIG_REPO_PATH:-$CACHE_ROOT/ubuntu-oem-image-builder}"
 SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "
 
 if ! $INTERACTIVE; then
