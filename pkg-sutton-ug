@@ -40,6 +40,7 @@ class PlatformInfo:
         self.series = ""
         self.platform = ""
         self.docbug = ""
+        self.docbugstr = ""
         self.shortdesc = ""
         self.project = ""
         self.pvr = ""
@@ -65,6 +66,10 @@ class PlatformInfo:
         self.series = data["series"]
         self.platform = data["platform"]
         self.docbug = data["docbug"]
+        if not isinstance(self.docbug, int):
+            self.docbugstr = "JIRA: " + str(self.docbug)
+        else:
+            self.docbugstr = "LP: #" + str(self.docbug)
         self.shortdesc = data["short_description"]
         self.project = data["project"]
         # If there is space in pvr, split it and use the first word
@@ -118,7 +123,7 @@ class PlatformInfo:
             "project": self.project,
             "platform": self.platform,
             "series": self.series,
-            "docbug": self.docbug,
+            "docbugstr": self.docbugstr,
             "shortdesc": self.shortdesc,
             "package_name": package_name,
             "provides_package": provides_package,
@@ -315,7 +320,7 @@ def main():
     parser.add_argument(
         "-b",
         "--docbug",
-        help="LP bug number for documentation.",
+        help="LP/JIRA bug number for documentation.",
         type=int,
     )
     parser.add_argument(

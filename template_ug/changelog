@@ -1,5 +1,5 @@
 {package_name} ({version}) {series}; urgency=medium
 
-  * UserGuide package for {shortdesc}. (LP: #{docbug})
+  * UserGuide package for {shortdesc}. ({docbugstr})
 
  -- {fullname} <{email}>  {timestamp}
