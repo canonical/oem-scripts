@@ -336,8 +336,8 @@ def trigger_job(server, job_name, parameters, dry_run=False):
 
 def verify_job_success(server, job_name, build_number):
     """Poll the Jenkins job status until it completes and return True if successful."""
-    # 90 minutes to provision the image only
-    SLEEP_TIME = 180
+    # 120 minutes to provision the image only
+    SLEEP_TIME = 240
     MAX_ATTEMPTS = 30
 
     for attempt in range(MAX_ATTEMPTS):
