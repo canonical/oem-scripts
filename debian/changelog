@@ -1,3 +1,13 @@
+oem-scripts (2.35) noble; urgency=medium
+
+  [Bin Li]
+  * Let pkg-sutton-ug support JIRA
+
+  [Artur Pak]
+  * trigger_sanity_c3.py: Increase timeout
+
+ -- Artur Pak <artur.pak@canonical.com>  Sun, 29 Dec 2024 07:01:48 +0800
+
 oem-scripts (2.34) noble; urgency=medium
 
   * trigger_sanity_c3.py: Exit script when triggered job failed with --wait-success
