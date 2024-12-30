@@ -104,6 +104,7 @@ if codename == "somerville":
 elif codename == "stella":
     parser.add_argument("-g", "--group", help="OEM-group", default="cmit")
     parser.add_argument("-p", "--platform", help="platform-codename", required=True)
+    parser.add_argument("-w", "--wallpaper", help="wallpaper for platform", default="")
     parser.add_argument("sd_id", nargs="+", help="subsystem device ID, such as 0962")
 elif codename == "sutton":
     parser.add_argument("-g", "--group", help="OEM-group", default="bachman")
@@ -142,6 +143,7 @@ if codename == "somerville":
     meta = "oem-" + codename + "-" + platform + "-meta"
 elif codename == "stella":
     group = args.group.lower()
+    wallpaper = args.wallpaper.lower()
     for sd_id in args.sd_id:
         if not re.match("[0-9a-fA-F]{4}$", sd_id):
             error("Invalid subsystem device ID: {%s}" % sd_id)
@@ -457,6 +459,9 @@ Depends: ${{misc:Depends}}{factory_depends}\n"""
 
             if codename == "sutton":
                 f.write(f"""Suggests: {doc}\n""")
+
+            if codename == "stella" and wallpaper != "":
+                f.write(f"""Recommends: {wallpaper}\n""")
 
             f.write(
                 f"""Description: hardware support for {Codename} {platformStr} (factory)
