@@ -338,7 +338,9 @@ def verify_job_success(server, job_name, build_number, wait_timeout):
     """Poll the Jenkins job status until it completes and return True if successful."""
     SLEEP_TIME = 240
     MAX_ATTEMPTS = int(wait_timeout / SLEEP_TIME + 1)
-    logger.debug(f"Set timeout after {MAX_ATTEMPTS} tries. Sleep after try: {SLEEP_TIME} sec")
+    logger.debug(
+        f"Set timeout after {MAX_ATTEMPTS} tries. Sleep after try: {SLEEP_TIME} sec"
+    )
 
     for attempt in range(MAX_ATTEMPTS):
         try:
@@ -540,7 +542,9 @@ def main():
             sys.exit(1)
         if not args.dry_run and args.wait_success and build_number:
             # poll the job status untill it succeed
-            if not verify_job_success(jenkins_server, job_name, build_number, args.wait_timeout):
+            if not verify_job_success(
+                jenkins_server, job_name, build_number, args.wait_timeout
+            ):
                 logger.error(f"Triggered job was not successful: {job_name}")
                 sys.exit(1)
             logger.info(f"Job completed successfully: {job_name}")
