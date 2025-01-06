@@ -1,3 +1,9 @@
+oem-scripts (2.37) noble; urgency=medium
+
+  * trigger_sanity_c3.py: Fix black formatting
+
+ -- Artur Pak <artur.pak@canonical.com>  Mon, 06 Jan 2025 16:36:01 +0800
+
 oem-scripts (2.36) noble; urgency=medium
 
   [Artur Pak]
