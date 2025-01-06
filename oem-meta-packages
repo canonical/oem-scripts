@@ -2287,6 +2287,9 @@ elif args.subcommand == "create":
             commands = ["pkg-stella-meta", "-p", platform, "-g", group]
         else:
             commands = ["pkg-stella-meta", "-p", platform]
+
+        if "wallpaper" in platform_json:
+            commands.extend(["--wallpaper", platform_json["wallpaper"]])
     elif project == "sutton":
         if series == "focal":
             commands = ["pkg-sutton-meta", "-p", platform, "-g", group]
