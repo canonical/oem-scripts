@@ -1,3 +1,12 @@
+oem-scripts (2.36) noble; urgency=medium
+
+  [Artur Pak]
+  * trigger_sanity_c3.py: Custom timeout to wait for job success
+  [Dirk Su]
+  * pkg-oem-meta: Add argument --wallpaper (JIRA: OEX86-553)
+
+ -- Artur Pak <artur.pak@canonical.com>  Mon, 06 Jan 2025 14:34:17 +0800
+
 oem-scripts (2.35) noble; urgency=medium
 
   [Bin Li]
