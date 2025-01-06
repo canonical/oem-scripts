@@ -1,3 +1,9 @@
+oem-scripts (2.38) noble; urgency=medium
+
+  * oem-meta-packages: add wallpaper if exist in platform json (JIRA: OEX86-553)
+
+ -- Dirk Su <dirk.su@canonical.com>  Mon, 06 Jan 2025 17:37:46 +0800
+
 oem-scripts (2.37) noble; urgency=medium
 
   * trigger_sanity_c3.py: Fix black formatting
