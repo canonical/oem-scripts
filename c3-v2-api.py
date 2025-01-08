@@ -5,25 +5,20 @@ import argparse
 import os
 import logging
 from configparser import ConfigParser
-import base64
 import requests
 from requests.auth import HTTPBasicAuth
 import json
 
+# Disable netrc to avoid requests using the credentials in netrc implicitly
+os.environ["NETRC"] = "/dev/null"
+
 
 def request_c3_access_token(client_id: str, secret: str):
-    credential = base64.b64encode(
-        "{0}:{1}".format(client_id, secret).encode("utf-8")
-    ).decode("utf-8")
-    headers = {
-        "Authorization": "Basic {0}".format(credential),
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
+    basic = HTTPBasicAuth(client_id, secret)
     data = {"grant_type": "client_credentials", "scope": "read write"}
     response = requests.post(
-        "https://certification.canonical.com/oauth2/token/", headers=headers, data=data
+        "https://certification.canonical.com/oauth2/token/", auth=basic, data=data
     )
-
     return json.loads(response.text)["access_token"]
 
 
