@@ -1,3 +1,9 @@
+oem-scripts (2.39) noble; urgency=medium
+
+  * c3-v2-api.py: Disable reading netrc from requests. (Jira: OEX86-561)
+
+ -- Shih-Yuan Lee (FourDollars) <sylee@canonical.com>  Wed, 08 Jan 2025 14:23:14 +0800
+
 oem-scripts (2.38) noble; urgency=medium
 
   * oem-meta-packages: add wallpaper if exist in platform json (JIRA: OEX86-553)
