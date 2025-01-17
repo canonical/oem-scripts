@@ -38,6 +38,16 @@ OEM_SCRIPTS_CONFIG = Path.home() / ".config" / "oem-scripts" / "config.ini"
 C3_V2_API_CLI = os.path.join(os.path.dirname(__file__), "c3-v2-api.py")
 logger = logging.getLogger("trigger-sanity")
 
+SSH_USER = "ubuntu"
+SSH_TIMEOUT = "30"
+SSH_OPTS = (
+    "-o StrictHostKeyChecking=no "
+    "-o UserKnownHostsFile=/dev/null "
+    "-o ConnectTimeout=30 "
+    "-o PubkeyAuthentication=yes "
+    "-o PasswordAuthentication=no"
+)
+
 
 def read_config_value(config_file, key):
     """Read a value from the oem-scripts config file."""
@@ -110,9 +120,40 @@ def clean_json_string(s):
 
 
 def is_ssh_online(ip_address):
-    # TODO: verify ssh can login and not reserved by OneSSH
-    # ssh oem-taipei-bot@ip_address status
-    return True
+    """Check if a host is reachable and SSH-accessible."""
+    response = subprocess.run(
+        ["ping", "-c", "1", "-W", str(SSH_TIMEOUT), ip_address],
+        stdout=subprocess.DEVNULL,
+    )
+    if response.returncode != 0:
+        logger.warning(f"Ping {ip_address} has failed. Skip...")
+        return False
+
+    # Verify SSH connectivity
+    subprocess.run(
+        [
+            "ssh-keygen",
+            "-f",
+            os.path.expanduser("~/.ssh/known_hosts"),
+            "-R",
+            ip_address,
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        command = f"ssh {SSH_OPTS} {SSH_USER}@{ip_address} exit"
+        result = subprocess.run(
+            command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        if result.returncode != 0:
+            logger.error(f"SSH access to {ip_address} is not available. Skip...")
+            return False
+        return True
+    except subprocess.SubprocessError as e:
+        logger.error(f"Subprocess error: {e}")
+        return False
 
 
 def get_linked_labresources():
@@ -371,7 +412,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--platform-info-dir",
-        help="Path to platform-info directory (required when --cid is not provided)",
+        help="Path to platform-info directory, e.g oem-hw-info/platform-info (required when --cid is not provided)",
     )
     parser.add_argument(
         "--iso-url", help="URL to ISO file (required when --cid is not provided)"
