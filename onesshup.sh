@@ -40,7 +40,16 @@ in_target() {
 		2> >(ignore_ssh_warn)
 }
 
+install_curl_in_target_if_missing() {
+    if ! in_target "$TARGET_USER@$TARGET_IP" "command -v curl &> /dev/null"; then
+        echo "curl is not installed. Installing curl on $TARGET_IP..."
+        in_target "$TARGET_USER@$TARGET_IP" \
+		"sudo apt-get update &> /dev/null && sudo apt-get install -y curl &> /dev/null"
+    fi
+}
+
 for TARGET_IP in "${TARGET_IPs[@]}"; do
+	install_curl_in_target_if_missing
 	if ! in_target "$TARGET_USER@$TARGET_IP" \
 		"curl -fskSL https://ubu.link/onesshup | sudo ONESSH_IMPORT_KEYFILE=/etc/ssh/authorized_keys bash"
 	then
