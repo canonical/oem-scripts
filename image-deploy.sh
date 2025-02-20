@@ -32,6 +32,8 @@ Examples:
     $0 -u ubuntu --url https://people.canonical.com/~kchsieh/images/somerville-noble-hwe-20240501-65.iso 10.42.0.161
     $0 -u ubuntu --url https://oem-share.canonical.com/partners/somerville/share/releases/noble/hwe/20240515-86/somerville-noble-hwe-20240515-86.iso 10.102.182.186
     $0 -u ubuntu --url https://oem-share.canonical.com/share/somerville/releases/noble/hwe/20240515-86/somerville-noble-hwe-20240515-86.iso 10.102.182.186
+    $0 -u ubuntu --url https://tel-image-cache.canonical.com/oem-share/somerville/releases/noble/oem-24.04b-next/20241007-92/somerville-noble-oem-24.04b-next-20241007-92.iso 10.102.182.186
+    $0 -u ubuntu --url https://tel-image-cache.canonical.com/oem-share/lyoncore/jenkins/job/somerville-noble-oem-24.04b-next/182/somerville-noble-oem-24.04b-next-20250219-182.iso 10.102.182.186
 EOF
 }
 
@@ -126,9 +128,9 @@ while :; do
                         curl -u "$JENKINS_USER_ID:$JENKINS_USER_TOKEN" -O "$2"
                         curl -u "$JENKINS_USER_ID:$JENKINS_USER_TOKEN" -O "$ISO_SHA256_URL"
                     else
-                        echo "No USER ID and USER TOKEN configured for jenkins operations"
+                        echo "No JENKINS_USER_ID and JENKINS_USER_TOKEN configured for jenkins operations"
                     fi
-                elif [[ "$2" =~ "oem-share" ]]; then
+                elif [[ "$2" == *oem-share.canonical.com/* ]]; then
                     if [ -f "$RCLONE_CONFIG_PATH" ]; then
                         if [[ "$2" =~ "partners" ]]; then
                             PROJECT=$(echo "$2" | cut -d "/" -f 5)
