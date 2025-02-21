@@ -1,3 +1,12 @@
+oem-scripts (2.40) noble; urgency=medium
+
+  * image-deploy.sh: Update ISO URL to match oem-share.canonical.com
+  * onesshup.sh: Add curl install when missing on target
+  [Shih-Yuan Lee]
+  * list-packages.sh: List published packages in the specific PPA.
+
+ -- Artur Pak <artur.pak@canonical.com>  Fri, 21 Feb 2025 11:08:38 +0800
+
 oem-scripts (2.39) noble; urgency=medium
 
   * c3-v2-api.py: Disable reading netrc from requests. (Jira: OEX86-561)
