@@ -269,6 +269,24 @@ def has_existing_queue(cid):
         return False
 
 
+def is_reserved_cid(platform_info_dir, cid):
+    # Reserved CIDs are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
+    # Returns True when CID is listed in that file
+    reserved_file_path = (
+        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
+    )
+
+    try:
+        with open(reserved_file_path, "r") as file:
+            data = json.load(file)
+            reserved_cids = data.get("cids", [])
+            if cid in reserved_cids:
+                return True
+    except FileNotFoundError:
+        logger.info(f"{reserved_file_path} is missing. Skip...")
+        return False
+
+
 def get_supported_cids(available_cids, iso_url, platform_info_dir):
     """Filter CIDs of machines that support the specified ISO."""
     supported_cids = []
@@ -284,6 +302,10 @@ def get_supported_cids(available_cids, iso_url, platform_info_dir):
     logger.info(f"Checking {len(available_cids)} available CIDs: {available_cids}")
 
     for cid in available_cids:
+        if is_reserved_cid(platform_info_dir, cid):
+            logger.info(f"{cid} is reserved in daily-sanity-exclude.json. Skip...")
+            continue
+
         try:
             result = subprocess.run(
                 [C3_V2_API_CLI, "--get", f"/api/v2/machines/{cid}"],
@@ -572,6 +594,13 @@ def main():
 
     if args.cid:
         # If single CID is provided, use it directly
+        if args.platform_info_dir:
+            if is_reserved_cid(args.platform_info_dir, args.cid):
+                logger.info(
+                    f"{args.cid} is reserved in daily-sanity-exclude.json. Skip..."
+                )
+                sys.exit(0)
+
         logger.info(f"Using provided CID: {args.cid}")
         if not has_existing_queue(args.cid):
             logger.error("CID does not have testflinger queue")
