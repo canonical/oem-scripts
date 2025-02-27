@@ -494,9 +494,9 @@ def parse_arguments():
         "--upload-to-oem-share", action="store_true", help="Upload results to OEM share"
     )
     parser.add_argument(
-        "--put-dell-embargo",
-        action="store_true",
-        help="Put Dell embargo on the results",
+        "--embargo-vendor",
+        default=None,
+        help="Put 'dell' or 'hp' embargo config on DUT after provisioning",
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Run without triggering Jenkins jobs"
@@ -587,8 +587,8 @@ def main():
     if args.upload_to_oem_share:
         parameters["UPLOAD_TO_OEM_SHARE"] = "true"
 
-    if args.put_dell_embargo:
-        parameters["PUT_DELL_EMBARGO"] = "true"
+    if args.embargo_vendor:
+        parameters["EMBARGO_VENDOR"] = args.embargo_vendor
 
     jenkins_server = get_jenkins_connection()
 
@@ -599,7 +599,7 @@ def main():
                 logger.info(
                     f"{args.cid} is reserved in daily-sanity-exclude.json. Skip..."
                 )
-                sys.exit(0)
+                sys.exit(2)
 
         logger.info(f"Using provided CID: {args.cid}")
         if not has_existing_queue(args.cid):
