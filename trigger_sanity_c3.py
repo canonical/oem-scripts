@@ -164,7 +164,7 @@ def get_linked_labresources():
             [
                 C3_V2_API_CLI,
                 "--get",
-                "/api/v2/linked-labresource/?datacentre__name__iexact=tel-l4",
+                "/api/v2/linked-labresource/?datacentre__name__iexact=tel-l10",
             ],
             capture_output=True,
             text=True,
@@ -601,6 +601,11 @@ def main():
                 )
                 sys.exit(2)
 
+        available_cids = get_linked_labresources()
+        if args.cid not in available_cids:
+            logger.error(f"{args.cid} is not ping-able in Lab10. Skip...")
+            sys.exit(3)
+
         logger.info(f"Using provided CID: {args.cid}")
         if not has_existing_queue(args.cid):
             logger.error("CID does not have testflinger queue")
@@ -620,7 +625,7 @@ def main():
             logger.info(f"Job completed successfully: {job_name}")
             return True
     else:
-        # Get CIDs which are online in Lab4 (IoT and PC)
+        # Get CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
         if not available_cids:
             logger.error("No available CIDs found")
