@@ -441,6 +441,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--cid",
+        nargs="+",
         help="Specific CID to trigger the job on. If not provided, we search C3 for all compatible machines",
     )
     parser.add_argument(
@@ -592,8 +593,9 @@ def main():
 
     jenkins_server = get_jenkins_connection()
 
-    if args.cid:
-        # If single CID is provided, use it directly
+    # only run on CIDs in Lab10
+    if len(args.cid) == 1:
+        # Single CID is provided, used for canary deployment
         if args.platform_info_dir:
             if is_reserved_cid(args.platform_info_dir, args.cid):
                 logger.info(
@@ -624,8 +626,35 @@ def main():
                 sys.exit(1)
             logger.info(f"Job completed successfully: {job_name}")
             return True
+    elif len(args.cid) > 1:
+        # Multiple CIDs are provided, used with selected list of CIDs
+        # This runs get_linked_labresources() only once to save time
+        available_cids = get_linked_labresources()
+        for cid in args.cid:
+            if args.platform_info_dir:
+                if is_reserved_cid(args.platform_info_dir, cid):
+                    logger.info(
+                        f"{cid} is reserved in daily-sanity-exclude.json. Skip..."
+                    )
+                    continue
+
+            if cid not in available_cids:
+                logger.error(f"{cid} is not ping-able in Lab10. Skip...")
+                continue
+
+            logger.info(f"Using provided CID: {cid}")
+            if not has_existing_queue(cid):
+                logger.error("CID does not have testflinger queue")
+                sys.exit(1)
+            parameters["CID"] = cid
+            build_number = trigger_job(
+                jenkins_server, job_name, parameters, args.dry_run
+            )
+            if not build_number:
+                logger.error(f"Failed to trigger build for: {cid}")
+                continue
     else:
-        # Get CIDs which are online in Lab10 (IoT and PC)
+        # No CID is provided, get all CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
         if not available_cids:
             logger.error("No available CIDs found")
