@@ -185,6 +185,8 @@ def get_linked_labresources():
                     if is_ssh_online(ip_address):
                         available_cids.append(cid)
                         logger.debug(f"Added CID: {cid} with IP: {ip_address}")
+                    else:
+                        logger.debug(f"Skip CID: {cid} with IP: {ip_address}. No ping.")
 
             # Check if there are more pages
             next_page = response_data.get("next")
@@ -271,7 +273,7 @@ def has_existing_queue(cid):
 
 def is_reserved_cid(platform_info_dir, cid):
     # Reserved CIDs are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
-    # Returns True when CID is listed in that file
+    # Returns True when CID is listed in "cids"
     reserved_file_path = (
         Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
     )
@@ -281,6 +283,24 @@ def is_reserved_cid(platform_info_dir, cid):
             data = json.load(file)
             reserved_cids = data.get("cids", [])
             if cid in reserved_cids:
+                return True
+    except FileNotFoundError:
+        logger.info(f"{reserved_file_path} is missing. Skip...")
+        return False
+
+
+def is_reserved_tag(platform_info_dir, tag):
+    # Reserved tags are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
+    # Returns True when tag is listed in "components"
+    reserved_file_path = (
+        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
+    )
+
+    try:
+        with open(reserved_file_path, "r") as file:
+            data = json.load(file)
+            reserved_tags = data.get("components", [])
+            if tag in reserved_tags:
                 return True
     except FileNotFoundError:
         logger.info(f"{reserved_file_path} is missing. Skip...")
@@ -331,6 +351,12 @@ def get_supported_cids(available_cids, iso_url, platform_info_dir):
             if arch_name == "x86_64" and is_project_match:
                 tag = data.get("launchpad_tag")
                 if tag:
+                    if is_reserved_tag(platform_info_dir, tag):
+                        logger.info(
+                            f"{tag} is reserved in daily-sanity-exclude.json. Skip {cid}..."
+                        )
+                        continue
+
                     logger.debug(
                         f"CID {cid}: checking kernel_meta support for tag {tag}"
                     )
@@ -441,6 +467,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--cid",
+        nargs="+",
         help="Specific CID to trigger the job on. If not provided, we search C3 for all compatible machines",
     )
     parser.add_argument(
@@ -592,8 +619,9 @@ def main():
 
     jenkins_server = get_jenkins_connection()
 
-    if args.cid:
-        # If single CID is provided, use it directly
+    # only run on CIDs in Lab10
+    if len(args.cid) == 1:
+        # Single CID is provided, used for canary deployment
         if args.platform_info_dir:
             if is_reserved_cid(args.platform_info_dir, args.cid):
                 logger.info(
@@ -602,8 +630,13 @@ def main():
                 sys.exit(2)
 
         available_cids = get_linked_labresources()
-        if args.cid not in available_cids:
-            logger.error(f"{args.cid} is not ping-able in Lab10. Skip...")
+        supported_cids = get_supported_cids(
+            available_cids, args.iso_url, args.platform_info_dir
+        )
+        if args.cid not in supported_cids:
+            logger.warning(
+                f"{args.cid} is not supported (i.e. reserved tag, not available in Lab10, etc.). Skip..."
+            )
             sys.exit(3)
 
         logger.info(f"Using provided CID: {args.cid}")
@@ -624,8 +657,40 @@ def main():
                 sys.exit(1)
             logger.info(f"Job completed successfully: {job_name}")
             return True
+    elif len(args.cid) > 1:
+        # Multiple CIDs are provided, used with selected list of CIDs
+        # This runs get_linked_labresources() only once to save time
+        available_cids = get_linked_labresources()
+        supported_cids = get_supported_cids(
+            available_cids, args.iso_url, args.platform_info_dir
+        )
+        for cid in args.cid:
+            if args.platform_info_dir:
+                if is_reserved_cid(args.platform_info_dir, cid):
+                    logger.info(
+                        f"{cid} is reserved in daily-sanity-exclude.json. Skip..."
+                    )
+                    continue
+
+            if cid not in supported_cids:
+                logger.warning(
+                    f"{cid} is not supported (i.e. reserved tag, not available in Lab10, etc.). Skip..."
+                )
+                continue
+
+            logger.info(f"Using provided CID: {cid}")
+            if not has_existing_queue(cid):
+                logger.error("CID does not have testflinger queue")
+                sys.exit(1)
+            parameters["CID"] = cid
+            build_number = trigger_job(
+                jenkins_server, job_name, parameters, args.dry_run
+            )
+            if not build_number:
+                logger.error(f"Failed to trigger build for: {cid}")
+                continue
     else:
-        # Get CIDs which are online in Lab10 (IoT and PC)
+        # No CID is provided, get all CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
         if not available_cids:
             logger.error("No available CIDs found")
