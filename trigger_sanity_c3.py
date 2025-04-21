@@ -119,41 +119,22 @@ def clean_json_string(s):
             )
 
 
-def is_ssh_online(ip_address):
-    """Check if a host is reachable and SSH-accessible."""
-    response = subprocess.run(
-        ["ping", "-c", "1", "-W", str(SSH_TIMEOUT), ip_address],
-        stdout=subprocess.DEVNULL,
-    )
-    if response.returncode != 0:
-        logger.warning(f"Ping {ip_address} has failed. Skip...")
+def is_ping_online(ip_address):
+    """Check if a host is reachable via ping."""
+    try:
+        response = subprocess.run(
+            ["ping", "-c", "1", "-W", str(SSH_TIMEOUT), ip_address],
+            stdout=subprocess.DEVNULL,
+            timeout=10,
+        )
+        if response.returncode != 0:
+            logger.warning(f"Ping {ip_address} has failed. Skip...")
+            return False
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Ping to {ip_address} timed out. Skip...")
         return False
 
-    # Verify SSH connectivity
-    subprocess.run(
-        [
-            "ssh-keygen",
-            "-f",
-            os.path.expanduser("~/.ssh/known_hosts"),
-            "-R",
-            ip_address,
-        ],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        command = f"ssh {SSH_OPTS} {SSH_USER}@{ip_address} exit"
-        result = subprocess.run(
-            command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        if result.returncode != 0:
-            logger.error(f"SSH access to {ip_address} is not available. Skip...")
-            return False
-        return True
-    except subprocess.SubprocessError as e:
-        logger.error(f"Subprocess error: {e}")
-        return False
+    return True
 
 
 def get_linked_labresources():
@@ -182,7 +163,7 @@ def get_linked_labresources():
             for cid, data in results.items():
                 ip_address = data.get("ip_address")
                 if data.get("role") == "DUT" and ip_address:
-                    if is_ssh_online(ip_address):
+                    if is_ping_online(ip_address):
                         available_cids.append(cid)
                         logger.debug(f"Added CID: {cid} with IP: {ip_address}")
                     else:
@@ -622,28 +603,17 @@ def main():
     # only run on CIDs in Lab10
     if len(args.cid) == 1:
         # Single CID is provided, used for canary deployment
+        cid = args.cid[0]
         if args.platform_info_dir:
-            if is_reserved_cid(args.platform_info_dir, args.cid):
-                logger.info(
-                    f"{args.cid} is reserved in daily-sanity-exclude.json. Skip..."
-                )
+            if is_reserved_cid(args.platform_info_dir, cid):
+                logger.info(f"{cid} is reserved in daily-sanity-exclude.json. Skip...")
                 sys.exit(2)
 
-        available_cids = get_linked_labresources()
-        supported_cids = get_supported_cids(
-            available_cids, args.iso_url, args.platform_info_dir
-        )
-        if args.cid not in supported_cids:
-            logger.warning(
-                f"{args.cid} is not supported (i.e. reserved tag, not available in Lab10, etc.). Skip..."
-            )
-            sys.exit(3)
-
-        logger.info(f"Using provided CID: {args.cid}")
-        if not has_existing_queue(args.cid):
+        logger.info(f"Using provided CID: {cid}")
+        if not has_existing_queue(cid):
             logger.error("CID does not have testflinger queue")
             sys.exit(1)
-        parameters["CID"] = args.cid
+        parameters["CID"] = cid
         build_number = trigger_job(jenkins_server, job_name, parameters, args.dry_run)
         if not build_number:
             logger.error(f"Failed to trigger job: {job_name}")
