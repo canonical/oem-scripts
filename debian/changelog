@@ -1,3 +1,9 @@
+oem-scripts (2.44) noble; urgency=medium
+
+  * trigger_sanity_c3.py: Disable ssh check. Run directly on single CID
+
+ -- Artur Pak <artur.pak@canonical.com>  Wed, 30 Apr 2025 07:24:08 +0800
+
 oem-scripts (2.43) noble; urgency=medium
 
   * trigger_sanity_c3.py: Support reservation by component for muiltiple CIDs
