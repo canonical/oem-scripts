@@ -1,3 +1,9 @@
+oem-scripts (2.45) noble; urgency=medium
+
+  * oem_scripts/__init__.py: Add oem-24.04c
+
+ -- Dirk Su <dirk.su@canonical.com>  Thu, 26 Jun 2025 10:29:52 +0800
+
 oem-scripts (2.44) noble; urgency=medium
 
   * trigger_sanity_c3.py: Disable ssh check. Run directly on single CID
