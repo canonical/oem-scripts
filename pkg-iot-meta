@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 
 import argparse
-import lsb_release
 import os
 import subprocess
 import sys
@@ -23,12 +22,11 @@ else:
     exit(1)
 
 info = UbuntuDistroInfo()
-try:
-    # for bionic
-    series = lsb_release.get_lsb_information()["CODENAME"]
-except AttributeError:
-    # for focal
-    series = lsb_release.get_os_release()["CODENAME"]
+with open("/etc/os-release") as f:
+    for line in f:
+        if line.startswith("UBUNTU_CODENAME="):
+            series = line.split("=")[1].strip().strip('"')
+            break
 
 parser.add_argument(
     "-s",
