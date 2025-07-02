@@ -29,7 +29,7 @@ for VALUE in "${CONDITIONS[@]}"; do
     # The output of `get-private-ppa ppa:oem-solutions-group/ppa` contains some credentials.
     # So it avoids checking the part of `echo "$RET" | awk '{print $2}'` here.
 
-    if [ "$(echo "$RET" | awk '{print $3}')" != "7B85BB3BB81D9DAFF9F06250B52B913A41086767" ]; then
+    if [ "$(echo "$RET" | awk '{print $3}')" != "23CBDB455F3792D18EF17E63A630CA96910990FF" ]; then
         if [ -z "${LAUNCHPAD_API:-}" ]; then
             echo "ERR: get-private-ppa ppa:oem-solutions-group/ppa"
         else
@@ -42,7 +42,7 @@ for VALUE in "${CONDITIONS[@]}"; do
     get-private-ppa ppa:oem-solutions-group/ppa -g > /dev/null
 
     # ppa:canonical-kernel-team/ppa is a public PPA so there is no credentials in the output.
-    if [ "$(get-private-ppa ppa:canonical-kernel-team/ppa)" != "canonical-kernel-team-ubuntu-ppa http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu 110E21D8B0E2A1F0243AF6820856F197B892ACEA" ]; then
+    if [ "$(get-private-ppa ppa:canonical-kernel-team/ppa)" != "canonical-kernel-team-ubuntu-ppa http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu D8027DCFBDAF61FB44D5FDCE9B5F34077FA4288A" ]; then
         if [ -z "${LAUNCHPAD_API:-}" ]; then
             echo "ERR: get-private-ppa canonical-kernel-team/ppa"
         else
