@@ -11,64 +11,15 @@ oem-meta-packages --quiet list
 # collect
 oem-meta-packages --quiet collect oem-somerville-tentacool-meta -o /dev/null
 
-if ! timeout 10s oem-meta-packages --quiet --series focal --use-cache collect oem-somerville-aipom-adl-meta; then
-    echo "FAIL: Timeout after 10s for 'oem-meta-packages --quiet --series focal --use-cache collect oem-somerville-aipom-adl-meta'."
-    RET=1
-fi
-if [ -f oem-somerville-aipom-adl-meta.json ] && [ "$(jq -r '."oem-somerville-aipom-adl-meta".new_desc' < oem-somerville-aipom-adl-meta.json)" = "Dell OptiPlex 5400 AIO, 7400 AIO" ]; then
-    jq '."oem-somerville-aipom-adl-meta"' < oem-somerville-aipom-adl-meta.json
-else
-    echo "FAIL: oem-somerville-aipom-adl-meta.json is expected to be generated after 'oem-meta-packages --quiet --series focal --use-cache collect oem-somerville-aipom-adl-meta'."
-    RET=1
-fi
-
-cat > fossa-bronn.json <<ENDLINE
-{
-  "certification-hardware": [
-    "202002-27725",
-    "202002-27726"
-  ],
-  "certified": true,
-  "certify-planning": [
-    1902074
-  ],
-  "group": "",
-  "hardware": [
-    "202002-27725",
-    "202002-27726"
-  ],
-  "metabug": 1897549,
-  "mirbug": 1897551,
-  "platform": "bronn",
-  "productnames": [
-    "Precision 5750"
-  ],
-  "project": "somerville",
-  "series": "focal",
-  "short_description": "Precision 12345"
-}
-ENDLINE
-oem-meta-packages --series focal --quiet collect fossa-bronn.json -o random.json
-if [ "$(jq -r '."oem-somerville-bronn-meta".new_desc' < random.json)" != "Dell Precision 12345" ]; then
-    echo "FAIL: 'oem-meta-packages --series focal --quiet collect fossa-bronn.json -o random.json' failed."
-    RET=1
-fi
-
-oem-meta-packages --series focal --quiet collect oem-somerville-tentacool-meta
-if [ "$(jq -r '."oem-somerville-tentacool-meta".oem.git.kernel_meta' < oem-somerville-tentacool-meta.json)" != "linux-generic-hwe-20.04" ]; then
-    echo "FAIL: 'oem-meta-packages --series focal --quiet collect oem-somerville-tentacool-meta' failed."
-    RET=1
-fi
-
 oem-meta-packages --series jammy --quiet collect oem-somerville-tentacool-meta
 if [ "$(jq -r '."oem-somerville-tentacool-meta".oem.git.kernel_meta' < oem-somerville-tentacool-meta.json)" != "linux-generic-hwe-22.04" ]; then
     echo "FAIL: 'oem-meta-packages --series jammy --quiet collect oem-somerville-tentacool-meta' failed."
     RET=1
 fi
 
-oem-meta-packages --series focal --quiet collect oem-stella.cmit-camerupt-meta
-if [ "$(jq -r '."oem-stella.cmit-camerupt-meta".oem.devel.archive' < oem-stella.cmit-camerupt-meta.json)" != "cesg:stella-cmit-ouagadougou-focal-devel" ]; then
-    echo "FAIL: 'oem-meta-packages --series focal --quiet collect oem-stella.cmit-camerupt-meta' failed."
+oem-meta-packages --series noble --quiet collect oem-somerville-treecko-meta
+if [ "$(jq -r '."oem-somerville-treecko-meta".oem.git.kernel_meta' < oem-somerville-treecko-meta.json)" != "linux-generic-hwe-24.04" ]; then
+    echo "FAIL: 'oem-meta-packages --series noble --quiet collect oem-somerville-treecko-meta' failed."
     RET=1
 fi
 
@@ -78,27 +29,13 @@ if [ "$(jq -r '."oem-stella-aron-meta".oem.devel.archive' < oem-stella-aron-meta
     RET=1
 fi
 
-# create
-cat > fossa-tentacool.json <<ENDLINE
-{
-  "biosids": [
-    "0AF3"
-  ],
-  "metabug": 1942333,
-  "mirbug": 1943413,
-  "platform": "tentacool",
-  "productnames": [
-    "XPS 13 9320"
-  ],
-  "project": "somerville",
-  "series": "focal",
-  "short_description": "XPS 13 9320",
-  "kernel_meta": "linux-oem-20.04d"
-}
-ENDLINE
-oem-meta-packages create fossa-tentacool.json
-mv oem-somerville-tentacool-meta fossa-tentacool-meta
+oem-meta-packages --series noble --quiet collect oem-stella-yoshio-meta
+if [ "$(jq -r '."oem-stella-yoshio-meta".oem.devel.archive' < oem-stella-yoshio-meta.json)" != "cesg:stella-noble-devel" ]; then
+    echo "FAIL: 'oem-meta-packages --series noble --quiet collect oem-stella-yoshio-meta' failed."
+    RET=1
+fi
 
+# create
 cat > jellyfish-tentacool.json <<ENDLINE
 {
   "biosids": [
@@ -120,27 +57,26 @@ ENDLINE
 oem-meta-packages create jellyfish-tentacool.json
 mv oem-somerville-tentacool-meta jellyfish-tentacool-meta
 
-cat > fossa-aron.json <<ENDLINE
+cat > numbat-yoshio.json <<ENDLINE
 {
   "biosids": [
-    "895C"
+    "8962"
   ],
   "certified": true,
-  "group": "cmit",
-  "kernel_meta": "linux-oem-20.04d",
-  "metabug": "1946754",
-  "mirbug": 1947330,
-  "platform": "aron",
+  "kernel_meta": "linux-oem-24.04a",
+  "metabug": "STELLA-1",
+  "mirbug": 2089102,
+  "platform": "yoshio",
   "productnames": [
-    "HP Z2 G9 Tower Workstation Desktop PC"
+    "HP Z4 G5 Workstation Desktop PC"
   ],
   "project": "stella",
-  "series": "focal",
-  "short_description": "HP Z2 G9 Tower Workstation Desktop PC"
+  "series": "noble",
+  "short_description": "HP Z4 G5 Workstation Desktop PC"
 }
 ENDLINE
-oem-meta-packages create fossa-aron.json
-mv oem-stella.cmit-aron-meta fossa-aron-meta
+oem-meta-packages create numbat-yoshio.json
+mv oem-stella-yoshio-meta numbat-yoshio-meta
 
 cat > jellyfish-cais.json <<ENDLINE
 {
@@ -232,17 +168,13 @@ oem-meta-packages create numbat-treecko.json
 rm -rf oem-somerville-treecko-meta
 
 # update
-oem-meta-packages --dry-run --use-cache --series focal update oem-somerville-tentacool-meta --kernel linux-generic-hwe-20.04
-oem-meta-packages --dry-run --use-cache --series focal update oem-stella.cmit-camerupt-meta --kernel linux-generic-hwe-20.04
-oem-meta-packages --dry-run --use-cache --series jammy update oem-somerville-tentacool-meta --kernel linux-generic-hwe-22.04
-oem-meta-packages --dry-run --use-cache --series jammy update oem-stella-aron-meta --kernel linux-generic-hwe-22.04
+oem-meta-packages --dry-run --series jammy update oem-somerville-tentacool-meta --kernel linux-generic-hwe-22.04
+oem-meta-packages --dry-run --series jammy update oem-stella-aron-meta --kernel linux-generic-hwe-22.04
+oem-meta-packages --dry-run --series noble update oem-somerville-treecko-meta --kernel linux-generic-hwe-22.04
+oem-meta-packages --dry-run --series noble update oem-stella-yoshio-meta --kernel linux-generic-hwe-24.04
 
 # staging-copy
-oem-meta-packages --dry-run --use-cache --series focal staging-copy oem-somerville-kingdra-adl-meta 2>&1 | grep -e cesg:somerville-fossa-kingdra-adl-focal-staging -e somerville-fossa-kingdra-adl-focal-devel
-oem-meta-packages --dry-run --use-cache --series focal staging-copy oem-somerville-charmander-meta 2>&1 | grep -e cesg:somerville-fossa-charmander-focal-staging -e cesg:somerville-fossa-charmander-focal-devel
-oem-meta-packages --dry-run --use-cache --series focal staging-copy oem-stella.cmit-aerodactyl-meta 2>&1 | grep -e cesg:stella-cmit-ouagadougou-focal-staging -e stella-cmit-ouagadougou-focal-devel
-oem-meta-packages --dry-run --use-cache --series focal staging-copy oem-sutton.newell-aaden-meta 2>&1 | grep -e cesg:sutton-newell-focal-staging -e cesg:sutton-newell-focal-devel
-oem-meta-packages --dry-run --use-cache --series jammy staging-copy oem-somerville-tentacool-meta 2>&1 | grep -e cesg:somerville-jellyfish-tentacool-jammy-devel -e cesg:somerville-jellyfish-tentacool-jammy-staging
-oem-meta-packages --dry-run --use-cache --series jammy staging-copy oem-sutton-balesego-meta 2>&1 | grep -e cesg:sutton-jammy-devel -e cesg:sutton-jammy-staging
+oem-meta-packages --dry-run --series jammy staging-copy oem-somerville-tentacool-meta 2>&1 | grep -e cesg:somerville-jellyfish-tentacool-jammy-devel -e cesg:somerville-jellyfish-tentacool-jammy-staging
+oem-meta-packages --dry-run --series jammy staging-copy oem-sutton-balesego-meta 2>&1 | grep -e cesg:sutton-jammy-devel -e cesg:sutton-jammy-staging
 
 exit "$RET"
