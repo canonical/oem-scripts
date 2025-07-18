@@ -244,15 +244,15 @@ def cleanup_bug(lp, bug_number: int, yes: bool) -> None:
     found = False
 
     for bug_task in bug.bug_tasks:
-        if bug_task.bug_target_name == "null-and-void":
+        if bug_task.bug_target_name == "bugs-to-clean":
             found = True
 
     if not found and bug.information_type == "Public":
-        bug.addTask(target=lp.projects["null-and-void"])
+        bug.addTask(target=lp.projects["bugs-to-clean"])
 
     for bug_task in bug.bug_tasks:
         if (
-            bug_task.bug_target_name != "null-and-void"
+            bug_task.bug_target_name != "bugs-to-clean"
             and bug.information_type == "Public"
         ):
             try:

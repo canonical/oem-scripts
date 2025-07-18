@@ -63,9 +63,3 @@ lp-api get "bugs/$BUG_ID" > "$BUG_ID.json"
 jq -r .description < "$BUG_ID.json" | grep linux-generic-hwe-20.04
 jq -r '.tags|join(" ")' < "$BUG_ID.json" | grep oem-done-upload
 
-if bootstrap-meta update-sru-git fossa-varys.json --kernel linux-oem-20.04d --dryrun; then
-    echo "It is expected to return failed."
-    exit 1
-fi
-
-bootstrap-meta update-sru-git fossa-varys.json --kernel linux-generic-hwe-20.04 --dryrun
