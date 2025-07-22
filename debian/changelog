@@ -1,3 +1,9 @@
+oem-scripts (2.46) noble; urgency=medium
+
+  * trigger_sanity_c3.py: Fix output parsing and remove unused args
+
+ -- Artur Pak <artur.pak@canonical.com>  Tue, 22 Jul 2025 15:21:55 +0800
+
 oem-scripts (2.45) noble; urgency=medium
 
   * oem_scripts/__init__.py: Add oem-24.04c
