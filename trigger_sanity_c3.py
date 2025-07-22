@@ -30,7 +30,6 @@ import logging
 import argparse
 import configparser
 import jenkins
-import ast
 from pathlib import Path
 import time
 
@@ -103,26 +102,10 @@ def get_jenkins_connection():
         sys.exit(1)
 
 
-# def clean_json_string(s):
-#     """Convert Python literal string from subprocess output to valid JSON string."""
-#     s = s.strip()
-#     try:
-#         # First try direct JSON parsing
-#         return json.loads(s)
-#     except json.JSONDecodeError:
-#         # Evaluate as Python literal and then convert to JSON
-#         try:
-#             return ast.literal_eval(s)
-#         except (ValueError, SyntaxError) as e:
-#             raise json.JSONDecodeError(
-#                 f"Failed to parse JSON or Python literal: {e}", s, 0
-#             )
 def clean_json_string(s):
-    """
-    Extract a JSON object or array from a string that may contain leading text.
-    """
-    start_brace = s.find('{')
-    start_bracket = s.find('[')
+    """Extract a JSON object or array from a string that may contain leading text."""
+    start_brace = s.find("{")
+    start_bracket = s.find("[")
 
     start_index = -1
 
@@ -138,8 +121,8 @@ def clean_json_string(s):
         logger.error("No JSON object or array found in the input string.")
         raise json.JSONDecodeError("No JSON object or array found.", s, 0)
 
-    # Slice the string from the start of the JSON and parse it
     return json.loads(s[start_index:])
+
 
 def is_ping_online(ip_address):
     """Check if a host is reachable via ping."""
@@ -504,12 +487,6 @@ def parse_arguments():
         "--prefix-submission-tarball", help="Prefix for the submission tarball"
     )
     parser.add_argument(
-        "--auto-create-bugs-assignee", help="Assignee for automatically created bugs"
-    )
-    parser.add_argument(
-        "--auto-create-bugs-milestone", help="Milestone for automatically created bugs"
-    )
-    parser.add_argument(
         "--test-flinger-global-timeout",
         type=int,
         help="Global timeout for Test Flinger (in seconds)",
@@ -518,12 +495,6 @@ def parse_arguments():
         "--force-run-test-flinger",
         action="store_true",
         help="Force run Test Flinger even if the queue is not available",
-    )
-    parser.add_argument(
-        "--send-email-notification", action="store_true", help="Send email notification"
-    )
-    parser.add_argument(
-        "--upload-to-oem-share", action="store_true", help="Upload results to OEM share"
     )
     parser.add_argument(
         "--embargo-vendor",
@@ -599,12 +570,6 @@ def main():
     if args.prefix_submission_tarball:
         parameters["PREFIX_SUBMISSION_TARBALL"] = args.prefix_submission_tarball
 
-    if args.auto_create_bugs_assignee:
-        parameters["AUTO_CREATE_BUGS_ASSIGNEE"] = args.auto_create_bugs_assignee
-
-    if args.auto_create_bugs_milestone:
-        parameters["AUTO_CREATE_BUGS_MILESTONE"] = args.auto_create_bugs_milestone
-
     if args.test_flinger_global_timeout:
         parameters["TEST_FLINGER_GLOBAL_TIMEOUT"] = str(
             args.test_flinger_global_timeout
@@ -612,12 +577,6 @@ def main():
 
     if args.force_run_test_flinger:
         parameters["FORCE_RUN_TEST_FLINGER"] = "true"
-
-    if args.send_email_notification:
-        parameters["SEND_EMAIL_NOTIFICATION"] = "true"
-
-    if args.upload_to_oem_share:
-        parameters["UPLOAD_TO_OEM_SHARE"] = "true"
 
     if args.embargo_vendor:
         parameters["EMBARGO_VENDOR"] = args.embargo_vendor
