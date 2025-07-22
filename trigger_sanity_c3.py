@@ -103,21 +103,43 @@ def get_jenkins_connection():
         sys.exit(1)
 
 
+# def clean_json_string(s):
+#     """Convert Python literal string from subprocess output to valid JSON string."""
+#     s = s.strip()
+#     try:
+#         # First try direct JSON parsing
+#         return json.loads(s)
+#     except json.JSONDecodeError:
+#         # Evaluate as Python literal and then convert to JSON
+#         try:
+#             return ast.literal_eval(s)
+#         except (ValueError, SyntaxError) as e:
+#             raise json.JSONDecodeError(
+#                 f"Failed to parse JSON or Python literal: {e}", s, 0
+#             )
 def clean_json_string(s):
-    """Convert Python literal string from subprocess output to valid JSON string."""
-    s = s.strip()
-    try:
-        # First try direct JSON parsing
-        return json.loads(s)
-    except json.JSONDecodeError:
-        # Evaluate as Python literal and then convert to JSON
-        try:
-            return ast.literal_eval(s)
-        except (ValueError, SyntaxError) as e:
-            raise json.JSONDecodeError(
-                f"Failed to parse JSON or Python literal: {e}", s, 0
-            )
+    """
+    Extract a JSON object or array from a string that may contain leading text.
+    """
+    start_brace = s.find('{')
+    start_bracket = s.find('[')
 
+    start_index = -1
+
+    # Determine the actual start index of the JSON content
+    if start_brace != -1 and start_bracket != -1:
+        start_index = min(start_brace, start_bracket)
+    elif start_brace != -1:
+        start_index = start_brace
+    elif start_bracket != -1:
+        start_index = start_bracket
+
+    if start_index == -1:
+        logger.error("No JSON object or array found in the input string.")
+        raise json.JSONDecodeError("No JSON object or array found.", s, 0)
+
+    # Slice the string from the start of the JSON and parse it
+    return json.loads(s[start_index:])
 
 def is_ping_online(ip_address):
     """Check if a host is reachable via ping."""
@@ -235,16 +257,18 @@ def has_existing_queue(cid):
             ],
             capture_output=True,
             text=True,
+            check=True,
         )
         data = clean_json_string(result.stdout)
         if not data:
             logger.warning(f"Failed to fetch queue details for CID: {cid}")
             return False
-        queues = data.get("queues")
-        if queues:
-            logger.debug(f"CID {cid} has existing queues: {queues}")
+
+        if data.get("queues"):
+            logger.debug(f"CID {cid} has existing queues: {data['queues']}")
             return True
 
+        logger.debug(f"CID {cid} has no queues")
         return False
 
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
