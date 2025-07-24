@@ -150,7 +150,7 @@ def get_linked_labresources():
             [
                 C3_V2_API_CLI,
                 "--get",
-                "/api/v2/linked-labresource/?datacentre__name__iexact=tel-l10",
+                "/api/v2/linked-labresources/?datacentre__name__iexact=tel-l10&pagination=limitoffset&limit=0&format=json",
             ],
             capture_output=True,
             text=True,
