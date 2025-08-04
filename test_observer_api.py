@@ -34,7 +34,7 @@ def generate_tob_payload(args):
 
     # get values from submission.json if available
     if args.submission_json:
-        image_info = parse_buildstamp(args.submission_json)
+        image_info = parse_image_info(args.submission_json)
         if image_info:
             # Directly update payload with image_info values
             for key in ["name", "version", "test_plan", "image_url", "arch"]:
@@ -64,8 +64,8 @@ def generate_tob_payload(args):
 
 
 def validate_tob_payload(payload):
-    """Validate that required fields were provided
-    These fields are available in submission.json file so we don't make them required args
+    """Validate that required fields that could be found in submission file
+    Otherwise, request them via args
     """
     required_fields = {
         "arch": "--arch",
@@ -80,7 +80,7 @@ def validate_tob_payload(payload):
                 file=sys.stderr,
             )
             print(
-                f"\nPlease provide the {field.replace('_', ' ')} using the {arg_name} argument:",
+                f"\nPlease provide the {field.replace('_', ' ')} using the {arg_name} argument",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -198,23 +198,33 @@ def parse_submission_json(submission_file):
         sys.exit(1)
 
 
-def parse_buildstamp(submission_file):
-    # TODO:
-    # use image_info after kernel type/suffix is fixed,
-    # because not all submissions have buildstamp
+def parse_image_info(submission_file):
     try:
         with open(submission_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        buildstamp = data["buildstamp"]
-        project = buildstamp.split("-")[2]
-        kernel_version = "-".join(buildstamp.split("-")[4:-2])
-        name = f"{project}-{kernel_version}"
-        series = buildstamp.split("-")[3]
-        image_date = buildstamp.split("-")[-2]
-        image_number = buildstamp.split("-")[-1]
-        image_version = f"{image_date}-{image_number}"
-        base_url = "https://oem-share.canonical.com/partners"
-        image_url = f"{base_url}/{project}/share/releases/{series}/{kernel_version}/{image_version}/"
+        payload = (
+            data.get("system_information")
+            .get("image_info")
+            .get("outputs")
+            .get("payload")
+        )
+        project = payload.get("project")  # somerville
+        series = payload.get("series")  # noble
+
+        kernel_type = payload.get("kernel_type")  # oem
+        kernel_version = payload.get("kernel_version")  # 24.04c
+        kernel_suffix = payload.get("kernel_suffix")  # proposed, next, edge
+
+        build_date = payload.get("build_date")
+        build_number = payload.get("build_number")
+        image_version = f"{build_date}-{build_number}"
+
+        url = payload.get("url")
+
+        if kernel_suffix:
+            name = f"{project}-{kernel_type}-{kernel_version}-{kernel_suffix}"
+        else:
+            name = f"{project}-{kernel_type}-{kernel_version}"
 
         architecture = data.get("architecture")
         test_plan = data.get("testplan_id")
@@ -224,7 +234,7 @@ def parse_buildstamp(submission_file):
             "name": name,
             "version": image_version,
             "series": series,
-            "image_url": image_url,
+            "image_url": url,
             "arch": architecture,
             "test_plan": test_plan,
         }
@@ -251,7 +261,9 @@ def parse_arguments():
     parser.add_argument("--name", help="Name of the test image")
     parser.add_argument("--version", help="Version of the test image")
     parser.add_argument("--arch", help="Architecture i.e. amd64")
-    parser.add_argument("--environment", required=True, help="Test environment")
+    parser.add_argument(
+        "--environment", required=True, help="Test environment, i.e CID of PC platform"
+    )
     parser.add_argument("--test-plan", help="Test plan identifier")
     parser.add_argument(
         "--execution-stage",
