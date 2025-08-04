@@ -31,7 +31,7 @@ def generate_tob_payload(args):
         "execution_stage": args.execution_stage,
         "sha256": None,
         "image_url": None,
-        "ci_link": None
+        "ci_link": None,
     }
 
     # try to get values from submission.json if provided
@@ -39,21 +39,21 @@ def generate_tob_payload(args):
         image_info = parse_buildstamp(args.submission_json)
         if image_info:
             # Directly update payload with image_info values
-            for key in ['name', 'version', 'test_plan', 'image_url', 'arch']:
+            for key in ["name", "version", "test_plan", "image_url", "arch"]:
                 if key in image_info and image_info[key] is not None:
                     payload[key] = image_info[key]
 
     # override if user provided values via args
     override_fields = {
-        'name': args.name,
-        'version': args.version,
-        'arch': args.arch,
-        'test_plan': args.test_plan,
-        'image_url': args.image_url,
-        'sha256': args.sha256,
-        'ci_link': args.ci_link,
-        'execution_stage': args.execution_stage,
-        'owner': args.owner
+        "name": args.name,
+        "version": args.version,
+        "arch": args.arch,
+        "test_plan": args.test_plan,
+        "image_url": args.image_url,
+        "sha256": args.sha256,
+        "ci_link": args.ci_link,
+        "execution_stage": args.execution_stage,
+        "owner": args.owner,
     }
 
     for key, value in override_fields.items():
@@ -65,21 +65,29 @@ def generate_tob_payload(args):
     # removes the None values, let api handle the defaults
     return {k: v for k, v in payload.items() if v is not None}
 
+
 def validate_tob_payload(payload):
     """Validate that required fields were provided
     These fields are available in submission.json file so we don't make them required args
     """
     required_fields = {
-        'arch': '--arch',
-        'test_plan': '--test-plan',
+        "arch": "--arch",
+        "test_plan": "--test-plan",
     }
 
     for field, arg_name in required_fields.items():
         if not payload.get(field):
-            field_name = ' '.join(word.capitalize() for word in field.split('_'))
-            print(f"Error: {field_name} is required but was not provided.", file=sys.stderr)
-            print(f"\nPlease provide the {field.replace('_', ' ')} using the {arg_name} argument:", file=sys.stderr)
+            field_name = " ".join(word.capitalize() for word in field.split("_"))
+            print(
+                f"Error: {field_name} is required but was not provided.",
+                file=sys.stderr,
+            )
+            print(
+                f"\nPlease provide the {field.replace('_', ' ')} using the {arg_name} argument:",
+                file=sys.stderr,
+            )
             sys.exit(1)
+
 
 def start_test_execution(api_url, headers, payload):
     """Starts a new test execution and returns its ID."""
@@ -121,7 +129,9 @@ def submit_test_results(api_url, headers, execution_id, results_data):
 
     print("Submitting test results...")
     try:
-        response = requests.post(results_url, headers=headers, json=results_data, timeout=30)
+        response = requests.post(
+            results_url, headers=headers, json=results_data, timeout=30
+        )
         response.raise_for_status()
 
         print("Test results submitted successfully.")
@@ -135,10 +145,7 @@ def submit_test_results(api_url, headers, execution_id, results_data):
 def end_test_execution(api_url, headers, execution_id, ci_link):
     """Ends the test execution by patching its status to COMPLETED."""
     patch_url = f"{api_url}/v1/test-executions/{execution_id}"
-    payload = {
-        "status": "COMPLETED",
-        "ci_link": ci_link
-    }
+    payload = {"status": "COMPLETED", "ci_link": ci_link}
 
     print("Ending test execution...")
     try:
@@ -164,23 +171,23 @@ def parse_submission_json(submission_file):
         list: List of test results in TOB format
     """
     try:
-        with open(submission_file, 'r', encoding='utf-8') as f:
+        with open(submission_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         results = []
-        for result in data.get('results', []):
+        for result in data.get("results", []):
             # Skip if not a test result
-            if 'outcome' not in result or 'id' not in result:
+            if "outcome" not in result or "id" not in result:
                 continue
 
             # Create test result entry
             test_result = {
-                'name': str(result['id']),
-                'status': 'PASSED' if result.get('outcome') == 'pass' else 'FAILED',
-                'template_id': str(result.get('template_id', '')),
-                'category': str(result.get('category', '')),
-                'comment': str(result.get('comments', '')),
-                'io_log': str(result.get('io_log', ''))
+                "name": str(result["id"]),
+                "status": "PASSED" if result.get("outcome") == "pass" else "FAILED",
+                "template_id": str(result.get("template_id", "")),
+                "category": str(result.get("category", "")),
+                "comment": str(result.get("comments", "")),
+                "io_log": str(result.get("io_log", "")),
             }
             results.append(test_result)
 
@@ -199,11 +206,11 @@ def parse_buildstamp(submission_file):
     # use image_info after kernel type/suffix is fixed,
     # because not all submissions have buildstamp
     try:
-        with open(submission_file, 'r', encoding='utf-8') as f:
+        with open(submission_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         buildstamp = data["buildstamp"]
         project = buildstamp.split("-")[2]
-        kernel_version= "-".join(buildstamp.split("-")[4:-2])
+        kernel_version = "-".join(buildstamp.split("-")[4:-2])
         name = f"{project}-{kernel_version}"
         series = buildstamp.split("-")[3]
         image_date = buildstamp.split("-")[-2]
@@ -222,7 +229,7 @@ def parse_buildstamp(submission_file):
             "series": series,
             "image_url": image_url,
             "arch": architecture,
-            "test_plan": test_plan
+            "test_plan": test_plan,
         }
 
     except KeyError as e:
@@ -234,33 +241,44 @@ def parse_buildstamp(submission_file):
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Submit test results to Test Observer API',
-        formatter_class=argparse.RawTextHelpFormatter
+        description="Submit test results to Test Observer API",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     # Existing arguments
-    parser.add_argument('--api-url',
-                      default=TOB_API_BASE_URL,
-                      help='Base URL of the Test Observer API (default: %s)' % TOB_API_BASE_URL)
-    parser.add_argument('--name', help='Name of the test image')
-    parser.add_argument('--version', help='Version of the test image')
-    parser.add_argument('--arch', help='Architecture i.e. amd64')
-    parser.add_argument('--environment', required=True, help='Test environment')
-    parser.add_argument('--test-plan', help='Test plan identifier')
-    parser.add_argument('--execution-stage',
-                   default='pending',
-                   choices=['pending', 'current'],
-                   help='Execution stage (default: %(default)s)')
-    parser.add_argument('--sha256', required=True, help='SHA256 hash of the test image')
-    parser.add_argument('--image-url', help='URL to the test image')
-    parser.add_argument('--ci-link', help='URL to CI job')
-    parser.add_argument('--owner',
-                      default=OWNER,
-                      help='Owner of the test execution (default: %s)' % OWNER)
-    parser.add_argument('--submission-json', help='Path to Checkbox submission JSON file')
+    parser.add_argument(
+        "--api-url",
+        default=TOB_API_BASE_URL,
+        help="Base URL of the Test Observer API (default: %s)" % TOB_API_BASE_URL,
+    )
+    parser.add_argument("--name", help="Name of the test image")
+    parser.add_argument("--version", help="Version of the test image")
+    parser.add_argument("--arch", help="Architecture i.e. amd64")
+    parser.add_argument("--environment", required=True, help="Test environment")
+    parser.add_argument("--test-plan", help="Test plan identifier")
+    parser.add_argument(
+        "--execution-stage",
+        default="pending",
+        choices=["pending", "current"],
+        help="Execution stage (default: %(default)s)",
+    )
+    parser.add_argument("--sha256", required=True, help="SHA256 hash of the test image")
+    parser.add_argument("--image-url", help="URL to the test image")
+    parser.add_argument("--ci-link", help="URL to CI job")
+    parser.add_argument(
+        "--owner",
+        default=OWNER,
+        help="Owner of the test execution (default: %s)" % OWNER,
+    )
+    parser.add_argument(
+        "--submission-json", help="Path to Checkbox submission JSON file"
+    )
 
-    parser.add_argument('--dry-run', action='store_true',
-                      help='If set, will not make any API calls, only show what would be done')
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="If set, will not make any API calls, only show what would be done",
+    )
 
     return parser.parse_args()
 
@@ -268,10 +286,7 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
     payload = generate_tob_payload(args)
     if args.api_url:
@@ -292,8 +307,10 @@ def main():
             except Exception as e:
                 print(f"   - Could not parse test results: {e}")
 
-        if 'ci_link' in payload and payload['ci_link']:
-            print(f"\nMark test execution as completed with CI link: {payload['ci_link']}")
+        if "ci_link" in payload and payload["ci_link"]:
+            print(
+                f"\nMark test execution as completed with CI link: {payload['ci_link']}"
+            )
     else:
         execution_id = start_test_execution(args.api_url, headers, payload)
 
@@ -301,7 +318,7 @@ def main():
             results = parse_submission_json(args.submission_json)
             submit_test_results(args.api_url, headers, execution_id, results)
 
-        end_test_execution(args.api_url, headers, execution_id, payload.get('ci_link'))
+        end_test_execution(args.api_url, headers, execution_id, payload.get("ci_link"))
         print("\nAll steps completed successfully!")
 
 
