@@ -11,6 +11,8 @@ RELEASE = "noble"
 OWNER = "Artur Pak"
 ARCHITECTURE = "x86_64"
 TOB_API_BASE_URL = "http://test-observer-api-staging.canonical.com"
+
+
 def generate_tob_payload(args):
     """
     Generate the payload for Test Observer API requests.
@@ -58,21 +60,26 @@ def generate_tob_payload(args):
         if value is not None:  # Only override if the argument was provided
             payload[key] = value
 
-    if not payload.get('arch'):
-        print("Error: Architecture is required but was not provided.", file=sys.stderr)
-        print("\nPlease provide the architecture using the --arch argument:", file=sys.stderr)
-        sys.exit(1)
-    if not payload.get('test_plan'):
-        print("Error: Test plan is required but was not provided.", file=sys.stderr)
-        print("\nPlease provide the test plan using the --test-plan argument:", file=sys.stderr)
-        sys.exit(1)
-    if not payload.get('sha256'):
-        print("Error: SHA256 is required but was not provided.", file=sys.stderr)
-        print("\nPlease provide the SHA256 using the --sha256 argument:", file=sys.stderr)
-        sys.exit(1)
+    validate_tob_payload(payload)
 
     # removes the None values, let api handle the defaults
     return {k: v for k, v in payload.items() if v is not None}
+
+def validate_tob_payload(payload):
+    """Validate that required fields were provided
+    These fields are available in submission.json file so we don't make them required args
+    """
+    required_fields = {
+        'arch': '--arch',
+        'test_plan': '--test-plan',
+    }
+
+    for field, arg_name in required_fields.items():
+        if not payload.get(field):
+            field_name = ' '.join(word.capitalize() for word in field.split('_'))
+            print(f"Error: {field_name} is required but was not provided.", file=sys.stderr)
+            print(f"\nPlease provide the {field.replace('_', ' ')} using the {arg_name} argument:", file=sys.stderr)
+            sys.exit(1)
 
 def start_test_execution(api_url, headers, payload):
     """Starts a new test execution and returns its ID."""
@@ -188,6 +195,9 @@ def parse_submission_json(submission_file):
 
 
 def parse_buildstamp(submission_file):
+    # TODO:
+    # use image_info after kernel type/suffix is fixed,
+    # because not all submissions have buildstamp
     try:
         with open(submission_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -234,16 +244,14 @@ def parse_arguments():
                       help='Base URL of the Test Observer API (default: %s)' % TOB_API_BASE_URL)
     parser.add_argument('--name', help='Name of the test image')
     parser.add_argument('--version', help='Version of the test image')
-    parser.add_argument('--arch',
-                      default=ARCHITECTURE,
-                      help='Architecture of the test image (default: %s)' % ARCHITECTURE)
+    parser.add_argument('--arch', help='Architecture i.e. amd64')
     parser.add_argument('--environment', required=True, help='Test environment')
     parser.add_argument('--test-plan', help='Test plan identifier')
     parser.add_argument('--execution-stage',
                    default='pending',
                    choices=['pending', 'current'],
                    help='Execution stage (default: %(default)s)')
-    parser.add_argument('--sha256', help='SHA256 hash of the test image')
+    parser.add_argument('--sha256', required=True, help='SHA256 hash of the test image')
     parser.add_argument('--image-url', help='URL to the test image')
     parser.add_argument('--ci-link', help='URL to CI job')
     parser.add_argument('--owner',
