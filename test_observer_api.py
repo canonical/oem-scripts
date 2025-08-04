@@ -8,8 +8,6 @@ import sys
 FAMILY = "image"
 OS = "ubuntu"
 RELEASE = "noble"
-OWNER = "Artur Pak"
-ARCHITECTURE = "x86_64"
 TOB_API_BASE_URL = "http://test-observer-api-staging.canonical.com"
 
 
@@ -17,12 +15,12 @@ def generate_tob_payload(args):
     """
     Generate the payload for Test Observer API requests.
     """
-    # Start with default values
+    # start with defaults and required args
     payload = {
         "family": FAMILY,
         "os": OS,
         "release": RELEASE,
-        "owner": OWNER,
+        "owner": args.owner,
         "name": None,
         "version": None,
         "arch": None,
@@ -34,7 +32,7 @@ def generate_tob_payload(args):
         "ci_link": None,
     }
 
-    # try to get values from submission.json if provided
+    # get values from submission.json if available
     if args.submission_json:
         image_info = parse_buildstamp(args.submission_json)
         if image_info:
@@ -53,7 +51,6 @@ def generate_tob_payload(args):
         "sha256": args.sha256,
         "ci_link": args.ci_link,
         "execution_stage": args.execution_stage,
-        "owner": args.owner,
     }
 
     for key, value in override_fields.items():
@@ -265,15 +262,10 @@ def parse_arguments():
     parser.add_argument("--sha256", required=True, help="SHA256 hash of the test image")
     parser.add_argument("--image-url", help="URL to the test image")
     parser.add_argument("--ci-link", help="URL to CI job")
-    parser.add_argument(
-        "--owner",
-        default=OWNER,
-        help="Owner of the test execution (default: %s)" % OWNER,
-    )
+    parser.add_argument("--owner", required=True, help="Owner of the test execution")
     parser.add_argument(
         "--submission-json", help="Path to Checkbox submission JSON file"
     )
-
     parser.add_argument(
         "--dry-run",
         action="store_true",
