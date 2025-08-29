@@ -1,3 +1,12 @@
+oem-scripts (2.48) noble; urgency=medium
+
+    * oem-meta-packages: focal is not in the supported list,
+      use get_all() because we just need get the animals. (JIRA: OEX86-775)
+    * debian/test/mir-bug: remove mir-bug check from the test
+    * mir-bug: try to handle interdiff error
+
+ -- Bin Li <binli@ubuntu.com>  Fri, 29 Aug 2025 10:02:18 +0800
+
 oem-scripts (2.47) noble; urgency=medium
 
   * trigger_sanity_c3.py: Update c3 api endpoint to get all lab10 resources
