@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Copyright 2018-2020 Canonical
 # Helper script to `bind' private to public bug.
 

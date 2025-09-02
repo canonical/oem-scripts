@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Rename the project
 # Program goes over the files and renames them using bzr
 # then it goes inside the file and cahnges all old names to new name
