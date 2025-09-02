@@ -938,8 +938,10 @@ def check_and_update_bug_attachments(
         for attachment in bug.attachments:
             if "debdiff" in attachment.title:
                 _run_command(["wget", attachment.data_link, "-O", "data"])
-                out, err, _ = _run_command(["interdiff", "data", debdiff])
-                if out:
+                out, err, _ = _run_command(
+                    ["interdiff", "data", debdiff], returncode=(0, 1)
+                )
+                if out or err:
                     warning(
                         f"{attachment.title} - {attachment.web_link} has unexpected content."
                     )

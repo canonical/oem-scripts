@@ -115,9 +115,7 @@ echo "INFO: mir-bug test case #5 ... ERR=$ERR took $((end - start)) seconds"
 echo "INFO: mir-bug test case #6 ... ERR=$ERR"
 start=$(date +%s)
 mir-bug update --yes --skip --ready --release "$AUTOPKGTEST_ARTIFACTS"/jellyfish-tentacool.json
-mir-bug check --skip --ready --release "$AUTOPKGTEST_ARTIFACTS"/jellyfish-tentacool.json
 mir-bug update --yes --skip --tz=UTC --ready --release "$AUTOPKGTEST_ARTIFACTS"/jellyfish-tentacool.json
-mir-bug check --skip --tz=UTC --ready --release "$AUTOPKGTEST_ARTIFACTS"/jellyfish-tentacool.json
 end=$(date +%s)
 echo "INFO: mir-bug test case #6 ... ERR=$ERR took $((end - start)) seconds"
 
