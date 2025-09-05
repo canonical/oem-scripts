@@ -1,3 +1,11 @@
+oem-scripts (2.49) noble; urgency=medium
+
+  * pkg-sutton-ug: Fix the black error.
+  * Updated the shebang line for portability across different systems of
+    python scripts.
+
+ -- Bin Li <binli@ubuntu.com>  Fri, 05 Sep 2025 13:29:35 +0800
+
 oem-scripts (2.48) noble; urgency=medium
 
     * oem-meta-packages: focal is not in the supported list,
