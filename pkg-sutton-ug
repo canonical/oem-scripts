@@ -211,7 +211,13 @@ def generate_debian_package(projection, ug_file: str, push_git: bool = False):
     )
     if push_git:
         subprocess.run(
-            ["git", "push", "--set-upstream", "origin", projection["series"]],
+            [
+                "git",
+                "push",
+                "--set-upstream",
+                "origin",
+                projection["platform"] + "-" + projection["series"],
+            ],
             check=False,
         )
     # restore the current directory
