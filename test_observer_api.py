@@ -221,10 +221,9 @@ def parse_image_info(submission_file):
 
         url = payload.get("url")
 
-        if kernel_suffix:
-            name = f"{project}-{kernel_type}-{kernel_version}-{kernel_suffix}"
-        else:
-            name = f"{project}-{kernel_type}-{kernel_version}"
+        # Build the name from available meta data because suffix maybe None
+        name_parts = [project, kernel_type, kernel_version, kernel_suffix]
+        name = "-".join(str(part) for part in name_parts if part is not None)
 
         architecture = data.get("architecture")
         test_plan = data.get("testplan_id")
