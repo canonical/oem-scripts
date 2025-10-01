@@ -180,7 +180,11 @@ def parse_submission_json(submission_file):
             # Create test result entry
             test_result = {
                 "name": str(result["id"]),
-                "status": "PASSED" if result.get("status") == "pass" else "SKIPPED" if result.get("status") == "skip" else "FAILED",
+                "status": "PASSED"
+                if result.get("status") == "pass"
+                else "SKIPPED"
+                if result.get("status") == "skip"
+                else "FAILED",
                 "template_id": str(result.get("template_id", "")),
                 "category": str(result.get("category", "")),
                 "comment": str(result.get("comments", "")),
