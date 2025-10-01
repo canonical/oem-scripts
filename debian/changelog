@@ -1,3 +1,9 @@
+oem-scripts (2.52) noble; urgency=medium
+
+  * Release 2.52.
+
+ -- Artur Pak <artur.pak@canonical.com>  Wed, 01 Oct 2025 14:23:42 +0800
+
 oem-scripts (2.51) noble; urgency=medium
 
   * Release 2.51
