@@ -1,3 +1,10 @@
+oem-scripts (2.50) noble; urgency=medium
+
+  * Add oem-24.04d [Kai-Chuan Hsieh]
+  * Add test_observer_api.py [Artur Pak]
+
+ -- Artur Pak <artur.pak@canonical.com>  Wed, 01 Oct 2025 13:47:25 +0800
+
 oem-scripts (2.49) noble; urgency=medium
 
   * pkg-sutton-ug: Fix the black error.
