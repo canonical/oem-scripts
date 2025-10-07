@@ -1,3 +1,9 @@
+oem-scripts (2.53) noble; urgency=medium
+
+  * Add test_observer_api.py to installer
+
+ -- Artur Pak <artur.pak@canonical.com>  Tue, 07 Oct 2025 10:26:14 +0800
+
 oem-scripts (2.52) noble; urgency=medium
 
   * Release 2.52.

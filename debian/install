@@ -16,6 +16,7 @@ setup-apt-dir.sh /usr/bin
 setup4test.sh /usr/bin
 stap-build-mymodule.sh /usr/bin
 stap-dbgsym.sh /usr/bin
+test_observer_api.py /usr/bin
 trigger-sanity3.sh /usr/bin
 local-repo /usr/bin
 image-deploy.sh /usr/bin
