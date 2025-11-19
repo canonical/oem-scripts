@@ -1,3 +1,9 @@
+oem-scripts (2.54) noble; urgency=medium
+
+  * Add isoplatformlist.py for supported platform list
+
+ -- Kai-Chuan Hsieh <kaichuan.hsieh@canonical.com>  Wed, 19 Nov 2025 12:28:32 +0800
+
 oem-scripts (2.53) noble; urgency=medium
 
   * Add test_observer_api.py to installer
