@@ -57,7 +57,7 @@ OPTIONS:
       Print help manual
 
  --arch amd64|arm64|armhf|...
-      Specify target architecture. If not specified, defaults to amd64.
+      Specify target architecture. If not specified, defaults to current architecture reported from dpkg.
 
  -c | --codename focal
       If not specified, it will use the output of \`lsb_release -c -s\`.
@@ -208,9 +208,9 @@ esac
 : > "$APTDIR/etc/apt/sources.list"
 
 # Set up architecture for apt sources
-# Default to amd64 if not specified
+# Default to running system architecture if not specified
 if [ -z "$ARCH" ]; then
-    ARCH="amd64"
+    ARCH="$(dpkg --print-architecture)"
 fi
 
 if [ -z "$NO_COMMUNITY" ]; then

@@ -57,7 +57,6 @@ parser.add_argument("--apt-dir", type=str, help="specify the dir for apt")
 parser.add_argument(
     "--arch",
     type=str,
-    default="amd64",
     help="specify the target architecture (e.g., amd64, arm64, armhf). If not specified, uses the running system's architecture.",
 )
 parser.add_argument(
@@ -280,11 +279,11 @@ if args.apt_dir:
         "Dir::State::status", os.path.join(args.apt_dir, "var/lib/dpkg/status")
     )
 
-apt_pkg.config.set("APT::Architecture", args.arch)
-
-# (re)set a list of architectures
-apt_pkg.config.clear("APT::Architectures")
-apt_pkg.config.set("APT::Architectures::", args.arch)
+if args.arch:
+    apt_pkg.config.set("APT::Architecture", args.arch)
+    # reset and set the list of architectures
+    apt_pkg.config.clear("APT::Architectures")
+    apt_pkg.config.set("APT::Architectures::", args.arch)
 
 if args.debug:
     new = apt_pkg.config.dump()
