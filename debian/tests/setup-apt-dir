@@ -56,6 +56,22 @@ else
     exit 1
 fi
 
+for series in xenial bionic focal jammy; do
+    setup-apt-dir.sh -c "$series" -m http://archive.ubuntu.com/ubuntu --arch amd64 --i386 -o aptdir.log
+    if [ ! -e aptdir.log ]; then
+        echo "aptdir.log doesn't exist."
+        exit 1
+    fi
+    APTDIR="$(cat aptdir.log)"
+    if [ -n "$APTDIR" ] && [ -d "$APTDIR" ] && [[ "$APTDIR" =~ ^/tmp/apt\. ]]; then
+        apt-cache -o "Dir=$APTDIR" -o "Dir::State::status=$APTDIR/var/lib/dpkg/status" policy libc6:i386 | grep libc6:i386
+        rm -fr "$APTDIR" aptdir.log
+    else
+        echo "APTDIR = '$APTDIR' invalid."
+        exit 1
+    fi
+done
+
 for series in jammy noble; do
     setup-apt-dir.sh -c "$series" -m http://ports.ubuntu.com --arch arm64 -o aptdir.log
     if [ ! -e aptdir.log ]; then

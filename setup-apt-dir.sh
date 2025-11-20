@@ -26,6 +26,7 @@ APTDIR=
 CODENAME=
 DEBUG=
 ARCH=
+I386=
 KEYS=()
 LISTS=()
 MIRROR=
@@ -38,7 +39,7 @@ DPKG_STATUS=
 OUTPUT=
 PPA=()
 PROPOSED=
-OPTS="$(getopt -o c:dho:ps:m: --long apt-dir:,arch:,codename:,dpkg-status:,disable-base,disable-updates,disable-backports,disable-community,enable-source,debug,help,output:,proposed,ppa:,mirror:,extra-repo:,extra-key: -n 'setup-apt-dir.sh' -- "$@")"
+OPTS="$(getopt -o c:dho:ps:m: --long apt-dir:,arch:,codename:,dpkg-status:,disable-base,disable-updates,disable-backports,disable-community,enable-source,debug,help,i386,output:,proposed,ppa:,mirror:,extra-repo:,extra-key: -n 'setup-apt-dir.sh' -- "$@")"
 eval set -- "${OPTS}"
 while :; do
     case "$1" in
@@ -58,6 +59,9 @@ OPTIONS:
 
  --arch amd64|arm64|armhf|...
       Specify target architecture. If not specified, defaults to current architecture reported from dpkg.
+
+ --i386
+      Enable i386 arch (only works with --arch amd64).
 
  -c | --codename focal
       If not specified, it will use the output of \`lsb_release -c -s\`.
@@ -109,6 +113,9 @@ ENDLINE
         ('--arch')
             ARCH="$2"
             shift 2;;
+        ('--i386')
+            I386=1
+            shift;;
         ('-c'|'--codename')
             CODENAME="$2"
             shift 2;;
@@ -213,6 +220,19 @@ if [ -z "$ARCH" ]; then
     ARCH="$(dpkg --print-architecture)"
 fi
 
+# Validate --i386 only works with amd64
+if [ -n "$I386" ] && [ "$ARCH" != "amd64" ]; then
+    echo "error: --i386 can only be used with --arch amd64" >&2
+    exit 1
+fi
+
+# Set up arch parameter for sources.list
+if [ -z "$I386" ]; then
+    ARCH_OPTION=" arch=$ARCH"
+else
+    ARCH_OPTION=" arch=amd64,i386"
+fi
+
 if [ -z "$NO_COMMUNITY" ]; then
     DIST=(main restricted universe multiverse)
 else
@@ -221,44 +241,44 @@ fi
 
 if [ -z "$NO_BASE" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -z "$NO_UPDATES" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-updates ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-updates ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-updates ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-updates ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -z "$NO_BACKPORTS" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-backports ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-backports ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-backports ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-backports ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -n "$PROPOSED" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-proposed ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-proposed ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-proposed ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH_OPTION] $MIRROR $CODENAME-proposed ${DIST[*]}
 ENDLINE
     fi
 fi
