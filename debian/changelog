@@ -1,3 +1,10 @@
+oem-scripts (2.56) noble; urgency=medium
+
+  * Restore --i386 from setup-apt-dir.sh as we have some jammy images that
+    still needs i386 multiarch when pulling nvidia packages.
+
+ -- Yao Wei (魏銘廷) <yao.wei@canonical.com>  Thu, 20 Nov 2025 10:30:34 +0800
+
 oem-scripts (2.55) noble; urgency=medium
 
   * Add --arch parameters to pkg-list and setup-apt-dir.sh to support
