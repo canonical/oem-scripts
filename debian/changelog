@@ -1,3 +1,11 @@
+oem-scripts (2.55) noble; urgency=medium
+
+  * Add --arch parameters to pkg-list and setup-apt-dir.sh to support
+    cross image build setups
+  * Remove --i386 from setup-apt-dir.sh
+
+ -- Yao Wei (魏銘廷) <yao.wei@canonical.com>  Thu, 20 Nov 2025 08:52:14 +0800
+
 oem-scripts (2.54) noble; urgency=medium
 
   * Add isoplatformlist.py for supported platform list

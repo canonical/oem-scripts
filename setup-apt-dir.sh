@@ -25,7 +25,7 @@ set -euo pipefail
 APTDIR=
 CODENAME=
 DEBUG=
-I386=
+ARCH=
 KEYS=()
 LISTS=()
 MIRROR=
@@ -38,7 +38,7 @@ DPKG_STATUS=
 OUTPUT=
 PPA=()
 PROPOSED=
-OPTS="$(getopt -o c:dho:ps:m: --long apt-dir:,codename:,dpkg-status:,disable-base,disable-updates,disable-backports,disable-community,enable-source,debug,help,i386,output:,proposed,ppa:,mirror:,extra-repo:,extra-key: -n 'setup-apt-dir.sh' -- "$@")"
+OPTS="$(getopt -o c:dho:ps:m: --long apt-dir:,arch:,codename:,dpkg-status:,disable-base,disable-updates,disable-backports,disable-community,enable-source,debug,help,output:,proposed,ppa:,mirror:,extra-repo:,extra-key: -n 'setup-apt-dir.sh' -- "$@")"
 eval set -- "${OPTS}"
 while :; do
     case "$1" in
@@ -55,6 +55,9 @@ OPTIONS:
 
  -h | --help
       Print help manual
+
+ --arch amd64|arm64|armhf|...
+      Specify target architecture. If not specified, defaults to current architecture reported from dpkg.
 
  -c | --codename focal
       If not specified, it will use the output of \`lsb_release -c -s\`.
@@ -76,9 +79,6 @@ OPTIONS:
 
  --enable-source
       Enable deb-src in the source list.
-
- --i386
-      Enable i386 arch.
 
  -m | --mirror mirror://mirrors.ubuntu.com/mirrors.txt
       If not specified, it will use http://archive.ubuntu.com/ubuntu by default.
@@ -106,6 +106,9 @@ ENDLINE
         ('-d'|'--debug')
             DEBUG=1
             shift ;;
+        ('--arch')
+            ARCH="$2"
+            shift 2;;
         ('-c'|'--codename')
             CODENAME="$2"
             shift 2;;
@@ -126,9 +129,6 @@ ENDLINE
             shift;;
         ('--enable-source')
             HAS_SOURCE=1
-            shift;;
-        ('--i386')
-            I386=1
             shift;;
         ('-o'|'--output')
             OUTPUT="$2"
@@ -207,12 +207,11 @@ esac
 
 : > "$APTDIR/etc/apt/sources.list"
 
-if [ -z "$I386" ]; then
-    ARCH=" arch=amd64"
-else
-    ARCH=""
+# Set up architecture for apt sources
+# Default to running system architecture if not specified
+if [ -z "$ARCH" ]; then
+    ARCH="$(dpkg --print-architecture)"
 fi
-
 
 if [ -z "$NO_COMMUNITY" ]; then
     DIST=(main restricted universe multiverse)
@@ -222,44 +221,44 @@ fi
 
 if [ -z "$NO_BASE" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -z "$NO_UPDATES" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-updates ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-updates ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-updates ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-updates ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -z "$NO_BACKPORTS" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-backports ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-backports ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-backports ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-backports ${DIST[*]}
 ENDLINE
     fi
 fi
 
 if [ -n "$PROPOSED" ]; then
     cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-proposed ${DIST[*]}
+deb [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-proposed ${DIST[*]}
 ENDLINE
     if [ -n "${HAS_SOURCE}" ]; then
         cat >> "$APTDIR/etc/apt/sources.list" <<ENDLINE
-deb-src [signed-by=$APTDIR/$PUBKEY.pub$ARCH] $MIRROR $CODENAME-proposed ${DIST[*]}
+deb-src [signed-by=$APTDIR/$PUBKEY.pub] $MIRROR $CODENAME-proposed ${DIST[*]}
 ENDLINE
     fi
 fi
@@ -280,7 +279,10 @@ for PUBKEY in "${KEYS[@]}"; do
     gpg --export --armor "$PUBKEY" > "$APTDIR/$PUBKEY.pub"
 done
 
-APTOPT=(-o "Dir=$APTDIR" -o "Dir::State::status=$APTDIR/var/lib/dpkg/status")
+APTOPT=(-o "Dir=$APTDIR")
+APTOPT+=(-o "Dir::State::status=$APTDIR/var/lib/dpkg/status")
+APTOPT+=(-o "APT::Architecture=$ARCH")
+echo "${APTOPT[@]}"
 
 apt-get "${APTOPT[@]}" update
 
