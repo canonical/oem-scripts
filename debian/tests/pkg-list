@@ -33,7 +33,7 @@ APTDIR=$(setup-apt-dir.sh -c focal -m http://uk.archive.ubuntu.com/ubuntu -p --p
 pkg-list --long oem-scripts --apt-dir "$APTDIR" --exclude all.list
 rm -fr "$APTDIR"
 
-echo "=== nvidia-driver-460 i386 ==="
-APTDIR=$(setup-apt-dir.sh -c focal -m http://uk.archive.ubuntu.com/ubuntu --i386 | tail -n1)
-pkg-list --recommends --apt-dir "$APTDIR" --exclude all.list nvidia-driver-460 | grep i386
+echo "=== linux-generic arm64 ==="
+APTDIR=$(setup-apt-dir.sh -c noble -m http://ports.ubuntu.com --arch arm64 | tail -n1)
+pkg-list --apt-dir "$APTDIR" --arch arm64 --exclude all.list linux-generic
 rm -fr "$APTDIR"
