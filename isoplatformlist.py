@@ -11,6 +11,7 @@ import logging
 series_codename_map = {"noble": "numbat"}
 series_release_map = {"noble": "24.04"}
 
+
 def mount_iso(iso_path, mount_point):
     subprocess.run(["sudo", "mount", "-o", "loop", iso_path, mount_point], check=True)
 
