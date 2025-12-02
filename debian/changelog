@@ -1,3 +1,10 @@
+oem-scripts (2.57) noble; urgency=medium
+
+  * Release 2.57.
+  * fix: correct kernel meta for hwe [Kai-Chuan Hsieh]
+
+ -- Artur Pak <artur.pak@canonical.com>  Tue, 02 Dec 2025 21:38:29 +0800
+
 oem-scripts (2.56) noble; urgency=medium
 
   * Restore --i386 from setup-apt-dir.sh as we have some jammy images that
