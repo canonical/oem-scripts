@@ -9,7 +9,7 @@ import argparse
 import logging
 
 series_codename_map = {"noble": "numbat"}
-
+series_release_map = {"noble": "24.04"}
 
 def mount_iso(iso_path, mount_point):
     subprocess.run(["sudo", "mount", "-o", "loop", iso_path, mount_point], check=True)
@@ -121,7 +121,11 @@ def main():
             )
             sys.exit(4)
         # find project meta sideload Packages
-        kernel_meta = f"linux-{kernel}"
+        if "hwe" in kernel:
+            release = series_release_map[series]
+            kernel_meta = f"linux-generic-hwe-{release}"
+        else:
+            kernel_meta = f"linux-{kernel}"
         packages_file = find_directory_with_packages(mount_point, series, project)
         if packages_file:
             logging.debug(f"Found Packages file at: {packages_file}")
