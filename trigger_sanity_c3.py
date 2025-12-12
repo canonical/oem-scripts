@@ -454,6 +454,9 @@ def parse_arguments():
         "--iso-url", help="URL to ISO file (required when --cid is not provided)"
     )
     parser.add_argument(
+        "--iso-sha", help="sha256sum of the ISO file, passed to Jenkins as IMAGE_SHA"
+    )
+    parser.add_argument(
         "--cid",
         nargs="+",
         help="Specific CID to trigger the job on. If not provided, we search C3 for all compatible machines",
@@ -542,7 +545,7 @@ def main():
     logging.basicConfig(
         level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
-    job_name = "infrastructure-checkbox-run"
+    job_name = args.job_name
     parameters = {}
 
     if args.iso_url:
@@ -580,6 +583,9 @@ def main():
 
     if args.embargo_vendor:
         parameters["EMBARGO_VENDOR"] = args.embargo_vendor
+
+    if args.iso_sha:
+        parameters["IMAGE_SHA"] = args.iso_sha
 
     jenkins_server = get_jenkins_connection()
 
