@@ -1,3 +1,10 @@
+oem-scripts (2.59) noble; urgency=medium
+
+  * Release 2.59
+  * trigger_sanity_c3.py: Add arg to pass the iso sha
+
+ -- Artur Pak <artur.pak@canonical.com>  Mon, 15 Dec 2025 20:19:08 +0800
+
 oem-scripts (2.58) noble; urgency=medium
 
   * Release 2.58.
