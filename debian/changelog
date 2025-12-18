@@ -1,3 +1,10 @@
+oem-scripts (2.60) noble; urgency=medium
+
+  * Release 2.60.
+  * isoplatformlist.py: Fix error message [Kai-Chuan Hsieh]
+
+ -- Artur Pak <artur.pak@canonical.com>  Thu, 18 Dec 2025 16:34:09 +0800
+
 oem-scripts (2.59) noble; urgency=medium
 
   * Release 2.59
