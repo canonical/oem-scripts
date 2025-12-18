@@ -122,9 +122,13 @@ def main():
             )
             sys.exit(4)
         # find project meta sideload Packages
-        if "hwe" in kernel:
-            release = series_release_map[series]
-            kernel_meta = f"linux-generic-hwe-{release}"
+        if kernel.startswith("hwe"):
+            try:
+                release = series_release_map[series]
+                kernel_meta = f"linux-generic-hwe-{release}"
+            except KeyError as e:
+                logging.error(f"series error: {series}")
+                sys.exit(0)
         else:
             kernel_meta = f"linux-{kernel}"
         packages_file = find_directory_with_packages(mount_point, series, project)
