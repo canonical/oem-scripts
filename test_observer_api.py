@@ -10,9 +10,9 @@ FAMILY = "image"
 OS = "ubuntu"
 RELEASE = "noble"
 TOB_API_BASE_URL = "http://test-observer-api-staging.canonical.com"
-DEFAULT_TIMEOUT = 120  # Increased from implicit 30s
 DEFAULT_MAX_RETRIES = 3
-DEFAULT_RETRY_DELAY = 5  # seconds
+DEFAULT_TIMEOUT_SECONDS = 120
+DEFAULT_RETRY_DELAY_SECONDS = 10
 
 
 def generate_tob_payload(args):
@@ -95,10 +95,10 @@ def make_api_request(
     url,
     headers,
     payload=None,
-    timeout=DEFAULT_TIMEOUT,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
     max_retries=DEFAULT_MAX_RETRIES,
 ):
-    """Make an API request with retry logic and exponential backoff.
+    """Make an API request with retry logic.
 
     Args:
         method: HTTP method ('PUT', 'POST', 'PATCH')
@@ -138,7 +138,8 @@ def make_api_request(
 
         except requests.exceptions.Timeout as e:
             if attempt < max_retries - 1:
-                retry_delay = DEFAULT_RETRY_DELAY * (2**attempt)  # Exponential backoff
+                retry_delay = DEFAULT_RETRY_DELAY_SECONDS * (2**attempt)
+                # increase the wait time in case server is reaaaly busy
                 print(
                     f"Request timed out after {timeout}s. Retrying in {retry_delay}s...",
                     file=sys.stderr,
@@ -155,7 +156,7 @@ def make_api_request(
             if attempt < max_retries - 1 and (
                 not hasattr(e, "response") or e.response.status_code >= 500
             ):
-                retry_delay = DEFAULT_RETRY_DELAY * (2**attempt)
+                retry_delay = DEFAULT_RETRY_DELAY_SECONDS * (2**attempt)
                 print(
                     f"Request failed: {e}. Retrying in {retry_delay}s...",
                     file=sys.stderr,
@@ -169,7 +170,11 @@ def make_api_request(
 
 
 def start_test_execution(
-    api_url, headers, payload, timeout=DEFAULT_TIMEOUT, max_retries=DEFAULT_MAX_RETRIES
+    api_url,
+    headers,
+    payload,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
 ):
     """Starts a new test execution and returns its ID."""
     start_url = f"{api_url}/v1/test-executions/start-test"
@@ -197,7 +202,7 @@ def submit_test_results(
     headers,
     execution_id,
     results_data,
-    timeout=DEFAULT_TIMEOUT,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
     max_retries=DEFAULT_MAX_RETRIES,
 ):
     """Submits test results to the Test Observer API.
@@ -222,7 +227,7 @@ def end_test_execution(
     headers,
     execution_id,
     ci_link,
-    timeout=DEFAULT_TIMEOUT,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
     max_retries=DEFAULT_MAX_RETRIES,
 ):
     """Ends the test execution by patching its status to COMPLETED."""
@@ -366,8 +371,8 @@ def parse_arguments():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=DEFAULT_TIMEOUT,
-        help=f"Request timeout in seconds (default: {DEFAULT_TIMEOUT})",
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help=f"Request timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
     )
     parser.add_argument(
         "--max-retries",
