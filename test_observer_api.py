@@ -139,7 +139,7 @@ def make_api_request(
         except requests.exceptions.Timeout as e:
             if attempt < max_retries - 1:
                 retry_delay = DEFAULT_RETRY_DELAY_SECONDS * (2**attempt)
-                # increase the wait time in case server is reaaaly busy
+                # increase the wait time in case server is really busy
                 print(
                     f"Request timed out after {timeout}s. Retrying in {retry_delay}s...",
                     file=sys.stderr,
