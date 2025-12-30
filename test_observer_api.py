@@ -3,12 +3,16 @@ import requests
 import argparse
 import json
 import sys
+import time
 
 
 FAMILY = "image"
 OS = "ubuntu"
 RELEASE = "noble"
 TOB_API_BASE_URL = "http://test-observer-api-staging.canonical.com"
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_TIMEOUT_SECONDS = 120
+DEFAULT_RETRY_DELAY_SECONDS = 10
 
 
 def generate_tob_payload(args):
@@ -86,34 +90,121 @@ def validate_tob_payload(payload):
             sys.exit(1)
 
 
-def start_test_execution(api_url, headers, payload):
+def make_api_request(
+    method,
+    url,
+    headers,
+    payload=None,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+):
+    """Make an API request with retry logic.
+
+    Args:
+        method: HTTP method ('PUT', 'POST', 'PATCH')
+        url: Full URL to request
+        headers: Request headers
+        payload: Request payload (optional)
+        timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts
+
+    Returns:
+        Response object if successful
+
+    Raises:
+        SystemExit on failure after all retries
+    """
+    for attempt in range(max_retries):
+        try:
+            print(f"Attempt {attempt + 1}/{max_retries}...")
+
+            if method.upper() == "PUT":
+                response = requests.put(
+                    url, headers=headers, json=payload, timeout=timeout
+                )
+            elif method.upper() == "POST":
+                response = requests.post(
+                    url, headers=headers, json=payload, timeout=timeout
+                )
+            elif method.upper() == "PATCH":
+                response = requests.patch(
+                    url, headers=headers, json=payload, timeout=timeout
+                )
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            response.raise_for_status()
+            return response
+
+        except requests.exceptions.Timeout as e:
+            if attempt < max_retries - 1:
+                retry_delay = DEFAULT_RETRY_DELAY_SECONDS * (2**attempt)
+                # increase the wait time in case server is really busy
+                print(
+                    f"Request timed out after {timeout}s. Retrying in {retry_delay}s...",
+                    file=sys.stderr,
+                )
+                time.sleep(retry_delay)
+            else:
+                print(
+                    f"Request timed out after {max_retries} attempts: {e}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1 and (
+                not hasattr(e, "response") or e.response.status_code >= 500
+            ):
+                retry_delay = DEFAULT_RETRY_DELAY_SECONDS * (2**attempt)
+                print(
+                    f"Request failed: {e}. Retrying in {retry_delay}s...",
+                    file=sys.stderr,
+                )
+                time.sleep(retry_delay)
+            else:
+                print(f"HTTP Error: {e}", file=sys.stderr)
+                if hasattr(e, "response") and e.response:
+                    print(f"Response Body: {e.response.text}", file=sys.stderr)
+                sys.exit(1)
+
+
+def start_test_execution(
+    api_url,
+    headers,
+    payload,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+):
     """Starts a new test execution and returns its ID."""
     start_url = f"{api_url}/v1/test-executions/start-test"
 
     print("Starting test execution...")
     print("Payload:", json.dumps(payload, indent=2))
-    try:
-        response = requests.put(start_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
 
-        response_data = response.json()
-        execution_id = response_data.get("id")
+    response = make_api_request(
+        "PUT", start_url, headers, payload, timeout, max_retries
+    )
+    response_data = response.json()
+    execution_id = response_data.get("id")
 
-        if not execution_id:
-            print(" Error: 'id' not found in start-test response.", file=sys.stderr)
-            print(f"Full response: {response_data}", file=sys.stderr)
-            sys.exit(1)
-
-        print(f"Test execution started successfully. ID: {execution_id}")
-        return execution_id
-    except requests.exceptions.RequestException as e:
-        print(f" HTTP Error starting execution: {e}", file=sys.stderr)
-        if e.response:
-            print(f"Response Body: {e.response.text}", file=sys.stderr)
+    if not execution_id:
+        print(" Error: 'id' not found in start-test response.", file=sys.stderr)
+        print(f"Full response: {response_data}", file=sys.stderr)
         sys.exit(1)
 
+    print(f"Test execution started successfully. ID: {execution_id}")
+    return execution_id
 
-def submit_test_results(api_url, headers, execution_id, results_data):
+
+def submit_test_results(
+    api_url,
+    headers,
+    execution_id,
+    results_data,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+):
     """Submits test results to the Test Observer API.
 
     Args:
@@ -121,40 +212,31 @@ def submit_test_results(api_url, headers, execution_id, results_data):
         headers: Dictionary of HTTP headers to include in the request
         execution_id: ID of the test execution to submit results for
         results_data: Dictionary containing test results in the expected format
+        timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts
     """
     results_url = f"{api_url}/v1/test-executions/{execution_id}/test-results"
 
     print("Submitting test results...")
-    try:
-        response = requests.post(
-            results_url, headers=headers, json=results_data, timeout=30
-        )
-        response.raise_for_status()
-
-        print("Test results submitted successfully.")
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP Error submitting results: {e}", file=sys.stderr)
-        if e.response:
-            print(f"Response Body: {e.response.text}", file=sys.stderr)
-        sys.exit(1)
+    make_api_request("POST", results_url, headers, results_data, timeout, max_retries)
+    print("Test results submitted successfully.")
 
 
-def end_test_execution(api_url, headers, execution_id, ci_link):
+def end_test_execution(
+    api_url,
+    headers,
+    execution_id,
+    ci_link,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+):
     """Ends the test execution by patching its status to COMPLETED."""
     patch_url = f"{api_url}/v1/test-executions/{execution_id}"
     payload = {"status": "COMPLETED", "ci_link": ci_link}
 
     print("Ending test execution...")
-    try:
-        response = requests.patch(patch_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-
-        print("Test execution marked as COMPLETED.")
-    except requests.exceptions.RequestException as e:
-        print(f" HTTP Error ending execution: {e}", file=sys.stderr)
-        if e.response:
-            print(f"Response Body: {e.response.text}", file=sys.stderr)
-        sys.exit(1)
+    make_api_request("PATCH", patch_url, headers, payload, timeout, max_retries)
+    print("Test execution marked as COMPLETED.")
 
 
 def parse_submission_json(submission_file):
@@ -286,6 +368,18 @@ def parse_arguments():
         action="store_true",
         help="If set, will not make any API calls, only show what would be done",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help=f"Request timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=DEFAULT_MAX_RETRIES,
+        help=f"Maximum number of retry attempts (default: {DEFAULT_MAX_RETRIES})",
+    )
 
     return parser.parse_args()
 
@@ -319,13 +413,29 @@ def main():
                 f"\nMark test execution as completed with CI link: {payload['ci_link']}"
             )
     else:
-        execution_id = start_test_execution(args.api_url, headers, payload)
+        execution_id = start_test_execution(
+            args.api_url, headers, payload, args.timeout, args.max_retries
+        )
 
         if args.submission_json:
             results = parse_submission_json(args.submission_json)
-            submit_test_results(args.api_url, headers, execution_id, results)
+            submit_test_results(
+                args.api_url,
+                headers,
+                execution_id,
+                results,
+                args.timeout,
+                args.max_retries,
+            )
 
-        end_test_execution(args.api_url, headers, execution_id, payload.get("ci_link"))
+        end_test_execution(
+            args.api_url,
+            headers,
+            execution_id,
+            payload.get("ci_link"),
+            args.timeout,
+            args.max_retries,
+        )
         print("\nAll steps completed successfully!")
 
 
