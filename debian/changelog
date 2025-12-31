@@ -1,3 +1,11 @@
+oem-scripts (2.61) noble; urgency=medium
+
+  * Release 2.61.
+  * test_observer_api.py: Increase timeout and re-tries before fail api
+    requests
+
+ -- Artur Pak <artur.pak@canonical.com>  Wed, 31 Dec 2025 15:18:36 +0800
+
 oem-scripts (2.60) noble; urgency=medium
 
   * Release 2.60.
