@@ -1,3 +1,9 @@
+oem-scripts (2.62) noble; urgency=medium
+
+  * setup-apt-dir.sh: make --extra-key works with --extra-repo
+
+ -- Yao Wei (魏銘廷) <yao.wei@canonical.com>  Wed, 31 Dec 2025 16:07:06 +0800
+
 oem-scripts (2.61) noble; urgency=medium
 
   * Release 2.61.

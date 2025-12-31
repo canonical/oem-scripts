@@ -283,10 +283,6 @@ ENDLINE
     fi
 fi
 
-for list in "${LISTS[@]}"; do
-    echo "$list" >> "$APTDIR/etc/apt/sources.list"
-done
-
 if ! gpg --fingerprint $PUBKEY >/dev/null 2>&1; then
     gpg --keyserver keyserver.ubuntu.com --recv-key $PUBKEY
 fi
@@ -297,6 +293,27 @@ for PUBKEY in "${KEYS[@]}"; do
         gpg --keyserver keyserver.ubuntu.com --recv-key "$PUBKEY"
     fi
     gpg --export --armor "$PUBKEY" > "$APTDIR/$PUBKEY.pub"
+done
+
+# Process extra repos and inject signed-by if keys are provided
+for i in "${!LISTS[@]}"; do
+    list="${LISTS[$i]}"
+    # If there's a corresponding key, inject signed-by into the repo line
+    if [ -n "${KEYS[$i]:-}" ]; then
+        key="${KEYS[$i]}"
+        # Check if there are already options in brackets
+        if [[ "$list" =~ ^(deb(-src)?[[:space:]]+)\[([^]]+)\][[:space:]]+ ]]; then
+            # Check if the options next to deb/deb-src already has signed-by
+            if [[ "${BASH_REMATCH[3]}" != *signed-by* ]]; then
+                # Insert signed-by into existing options
+                list=$(echo "$list" | sed -E "s#^(deb(-src)?[[:space:]]+)\[([^]]+)\]#\1[signed-by=$APTDIR\/$key.pub \3]#")
+            fi
+        else
+            # No options, insert new bracket with signed-by after 'deb' or 'deb-src'
+            list=$(echo "$list" | sed -E "s#^(deb(-src)?[[:space:]]+)#\1[signed-by=$APTDIR\/$key.pub] #")
+        fi
+    fi
+    echo "$list" >> "$APTDIR/etc/apt/sources.list"
 done
 
 APTOPT=(-o "Dir=$APTDIR")
