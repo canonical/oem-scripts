@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Trigger sanity test via GitHub Actions or Jenkins job
+Currently script supports both while in the middle of migration.
+After GitHub workflow is up, pipeline can use the same script but need to update the arguments.
+
+TODO: After Jenkins jobs are discontinued, the Jenkins related code can be removed
 
 GitHub Actions:
-# All defaults (canonical/oem-pc-auto-sanity/main-ci.yaml on main branch)
-./trigger_sanity_c3.py --use-github-actions --cid 202411-35996 --iso-url <url>
 
-# All custom
 ./trigger_sanity_c3.py --use-github-actions \
   --github-owner canonical \
   --github-repo oem-enablement-ops \
-  --github-workflow image-provision-test.yml \
+  --github-workflow provision-test-image.yml \
   --github-branch develop-branch \
   --cid 202411-35996 --iso-url <url> --plan <plan>
 
@@ -48,11 +49,6 @@ from gh_actions_api import GitHubActionsAPI
 OEM_SCRIPTS_CONFIG = Path.home() / ".config" / "oem-scripts" / "config.ini"
 C3_V2_API_CLI = os.path.join(os.path.dirname(__file__), "c3-v2-api.py")
 logger = logging.getLogger("trigger-sanity")
-
-# GitHub Actions defaults
-DEFAULT_GITHUB_OWNER = "canonical"
-DEFAULT_GITHUB_REPO = "oem-pc-auto-sanity"
-DEFAULT_GITHUB_WORKFLOW = "main-ci.yaml"
 
 SSH_USER = "ubuntu"
 SSH_TIMEOUT = "30"
@@ -459,7 +455,9 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
         - None for dry_run
     """
     try:
-        # Because workflow uses ISO_NAME instead of IMAGE_URL
+        # GitHub workflow uses ISO_NAME to set the run-name
+        # so passing iso name instead of full URL is for readability
+        # workflow itself has logic to reconstruct the full URL
         github_inputs = parameters.copy()
         if "IMAGE_URL" in github_inputs:
             iso_url = github_inputs.pop("IMAGE_URL")
@@ -493,11 +491,13 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
                 logger.error(f"Failed to trigger workflow: {workflow_id}")
                 return False
 
-            # Poll for the new run to appear (max ~60 seconds)
-            MAX_POLL_ATTEMPTS = 10
-            POLL_SLEEP = 6
+            # Poll for the new run to appear
+            # sleeps longer each attempt in case API is slow
+            MAX_POLL_ATTEMPTS = 5
+            BASE_SLEEP = 2
             for attempt in range(MAX_POLL_ATTEMPTS):
-                time.sleep(POLL_SLEEP)
+                sleep_time = BASE_SLEEP * (2**attempt)
+                time.sleep(sleep_time)
                 try:
                     runs_after = api.get_workflow_runs(
                         workflow_id=workflow_id, per_page=5
@@ -705,25 +705,34 @@ def parse_arguments():
     )
     parser.add_argument(
         "--github-owner",
-        default=DEFAULT_GITHUB_OWNER,
-        help=f"GitHub repository owner for GitHub Actions (default: {DEFAULT_GITHUB_OWNER})",
+        help="GitHub repository owner (required with --use-github-actions)",
     )
     parser.add_argument(
         "--github-repo",
-        default=DEFAULT_GITHUB_REPO,
-        help=f"GitHub repository name for GitHub Actions (default: {DEFAULT_GITHUB_REPO})",
+        help="GitHub repository name (required with --use-github-actions)",
     )
     parser.add_argument(
         "--github-workflow",
-        default=DEFAULT_GITHUB_WORKFLOW,
-        help=f"GitHub Actions workflow file name for GitHub Actions (default: {DEFAULT_GITHUB_WORKFLOW})",
+        help="GitHub Actions workflow file name (required with --use-github-actions)",
     )
     parser.add_argument(
         "--github-branch",
-        default="main",
-        help="Git branch/tag/commit to run GitHub Actions workflow on (default: main)",
+        help="Git branch to run GitHub Actions workflow on (required with --use-github-actions)",
     )
     args = parser.parse_args()
+
+    # Validate GitHub Actions specific arguments
+    if args.use_github_actions:
+        if (
+            not args.github_owner
+            or not args.github_repo
+            or not args.github_workflow
+            or not args.github_branch
+        ):
+            parser.error(
+                "When using --use-github-actions, you must provide: "
+                "--github-owner, --github-repo, --github-workflow, and --github-branch"
+            )
 
     # Validate arguments
     if not args.cid:
