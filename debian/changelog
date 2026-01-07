@@ -1,3 +1,10 @@
+oem-scripts (2.63) noble; urgency=medium
+
+  * Release 2.63
+  * gh_actions_api.py: Add script to call Github Actions API
+
+ -- Artur Pak <artur.pak@canonical.com>  Wed, 07 Jan 2026 14:18:44 +0800
+
 oem-scripts (2.62) noble; urgency=medium
 
   * setup-apt-dir.sh: make --extra-key works with --extra-repo
