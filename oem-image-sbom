@@ -62,9 +62,11 @@ def get_sbom(filename) -> dict:
         for pkg, fields in manifest["squashfs"][squashfs]["manifest"].items():
             if pkg.startswith("snap:"):
                 snap = sbom.get(pkg, None)
-                rev = fields.get("revision", None)
-                trk = fields.get("tracking", None)
-                ver = fields.get("version", None)
+                # We need to keep the highest version/revision of package across all squashfs
+                # Assign 0 or "" which are always lower than real values
+                rev = fields.get("revision", 0)  # integers in manifest
+                trk = fields.get("tracking", "")
+                ver = fields.get("version", "")  # strings in manifest
                 if snap is None:
                     sbom[pkg] = {
                         "revision": rev,
