@@ -1,3 +1,10 @@
+oem-scripts (2.64) noble; urgency=medium
+
+  * Release 2.64
+  * oem-image-sbom: Fix default values
+
+ -- Artur Pak <artur.pak@canonical.com>  Fri, 09 Jan 2026 14:37:41 +0800
+
 oem-scripts (2.63) noble; urgency=medium
 
   * Release 2.63
