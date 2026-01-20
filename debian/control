@@ -43,6 +43,7 @@ Depends:
  python3-mechanize,
  python3-pydantic,
  python3-requests,
+ python3-yaml,
  ubuntu-dev-tools,
  ubuntu-oem-keyring,
  wget

@@ -7,6 +7,7 @@ import tempfile
 import shutil
 import argparse
 import logging
+import yaml
 
 series_codename_map = {"noble": "numbat"}
 series_release_map = {"noble": "24.04"}
@@ -140,11 +141,19 @@ def main():
                     "No valid package entries found in the Packages file. Exiting."
                 )
                 sys.exit(5)
+            platforms = []
             for item in packages_list:
+                platform = {}
                 if "Depends" in item and kernel_meta in item["Depends"]:
+                    platform["package"] = item["Package"]
                     parts = item["Package"].split("-")
-                    platform_tag = f"{series_codename_map[series]}-{parts[2]}"
-                    print(platform_tag)
+                    platform["component"] = f"{series_codename_map[series]}-{parts[2]}"
+                    temp = item["Modaliases"].split("(")[1]
+                    mod_string = temp.split(")")[0]
+                    platform["modaliases"] = mod_string.split(", ")
+                    platforms.append(platform)
+            yaml_string = yaml.dump(platforms, sort_keys=False)
+            print(yaml_string)
         else:
             logging.error(
                 f"No Packages file found under directory canonical_{series}_{project}-meta."
