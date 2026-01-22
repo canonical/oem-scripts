@@ -4,12 +4,12 @@ import argparse
 import json
 import sys
 import time
+import os
 
 
 FAMILY = "image"
 OS = "ubuntu"
 RELEASE = "noble"
-TOB_API_BASE_URL = "http://test-observer-api-staging.canonical.com"
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT_SECONDS = 120
 DEFAULT_RETRY_DELAY_SECONDS = 10
@@ -340,8 +340,9 @@ def parse_arguments():
     # Existing arguments
     parser.add_argument(
         "--api-url",
-        default=TOB_API_BASE_URL,
-        help="Base URL of the Test Observer API (default: %s)" % TOB_API_BASE_URL,
+        required=True,
+        default=os.environ.get("TEST_OBSERVER_API_URL"),
+        help="Base URL of the Test Observer API (overrides TEST_OBSERVER_API_URL environment variable if provided)",
     )
     parser.add_argument("--name", help="Name of the test image")
     parser.add_argument("--version", help="Version of the test image")
@@ -387,13 +388,22 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
+    # Validate that API URL is provided
+    if not args.api_url:
+        print(
+            "Error: Test Observer API URL is required.",
+            file=sys.stderr,
+        )
+        print(
+            "Please provide it using --api-url argument or TEST_OBSERVER_API_URL environment variable.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
     payload = generate_tob_payload(args)
-    if args.api_url:
-        print(f"\nAPI URL: {args.api_url}")
-    else:
-        print(f"\nAPI URL: {TOB_API_BASE_URL}")
+    print(f"\nAPI URL: {args.api_url}")
 
     if args.dry_run:
         print("\nDry run - would execute the following:")
