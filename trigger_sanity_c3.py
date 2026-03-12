@@ -14,6 +14,15 @@ GitHub Actions:
   --github-branch develop-branch \
   --cid 202411-35996 --iso-url <url> --plan <plan>
 
+When multiple CIDs are provided, GitHub Actions is triggered once with CIDs joined by commas:
+
+./trigger_sanity_c3.py --use-github-actions \
+    --github-owner canonical \
+    --github-repo oem-enablement-ops \
+    --github-workflow provision-test-image.yml \
+    --github-branch develop-branch \
+    --cid 202411-35996 202411-35997 --iso-url <url> --plan <plan>
+
 Jenkins job::
 1. Trigger job on a specific CID:
    - Specify the CID with --cid
@@ -496,7 +505,7 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
             MAX_POLL_ATTEMPTS = 5
             BASE_SLEEP = 2
             for attempt in range(MAX_POLL_ATTEMPTS):
-                sleep_time = BASE_SLEEP * (2**attempt)
+                sleep_time = BASE_SLEEP * (2 ** attempt)
                 time.sleep(sleep_time)
                 try:
                     runs_after = api.get_workflow_runs(
@@ -869,6 +878,7 @@ def main():
         supported_cids = get_supported_cids(
             available_cids, args.iso_url, args.platform_info_dir
         )
+        selected_cids = []
         for cid in args.cid:
             if args.platform_info_dir:
                 if is_reserved_cid(args.platform_info_dir, cid):
@@ -887,8 +897,14 @@ def main():
             if not has_existing_queue(cid):
                 logger.error("CID does not have testflinger queue")
                 sys.exit(1)
-            parameters["CID"] = cid
+            selected_cids.append(cid)
 
+        if not selected_cids:
+            logger.error("No valid CIDs available to trigger")
+            sys.exit(1)
+
+        if args.use_github_actions:
+            parameters["CID"] = ",".join(selected_cids)
             if not trigger_ci(
                 args.use_github_actions,
                 github_api,
@@ -899,8 +915,23 @@ def main():
                 parameters,
                 args.dry_run,
             ):
-                logger.error(f"Failed to trigger for CID: {cid}")
-                continue
+                logger.error(f"Failed to trigger workflow for CIDs: {selected_cids}")
+                sys.exit(1)
+        else:
+            for cid in selected_cids:
+                parameters["CID"] = cid
+                if not trigger_ci(
+                    args.use_github_actions,
+                    github_api,
+                    workflow_id,
+                    args.github_branch,
+                    jenkins_server,
+                    job_name,
+                    parameters,
+                    args.dry_run,
+                ):
+                    logger.error(f"Failed to trigger for CID: {cid}")
+                    continue
     else:
         # No CID is provided, get all CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
@@ -916,8 +947,8 @@ def main():
             logger.error("No supported CIDs found for the given ISO file")
             sys.exit(1)
 
-        for cid in supported_cids:
-            parameters["CID"] = cid
+        if args.use_github_actions:
+            parameters["CID"] = ",".join(supported_cids)
             if not trigger_ci(
                 args.use_github_actions,
                 github_api,
@@ -928,7 +959,21 @@ def main():
                 parameters,
                 args.dry_run,
             ):
-                logger.error(f"Failed to trigger for CID: {cid}")
+                logger.error(f"Failed to trigger workflow for CIDs: {supported_cids}")
+        else:
+            for cid in supported_cids:
+                parameters["CID"] = cid
+                if not trigger_ci(
+                    args.use_github_actions,
+                    github_api,
+                    workflow_id,
+                    args.github_branch,
+                    jenkins_server,
+                    job_name,
+                    parameters,
+                    args.dry_run,
+                ):
+                    logger.error(f"Failed to trigger for CID: {cid}")
 
 
 if __name__ == "__main__":
