@@ -298,7 +298,16 @@ def generate_debian_package(version, bootstrap=False, real=False):
 
     source_file = "oem-%s-%s-meta.list" % (codename + infix, platform)
     archive = "archive.canonical.com"
-    if series == "focal" or series == "noble" or codename == "somerville":
+    if series == "resolute":
+        source_file = "oem-%s-%s-meta.sources" % (codename + infix, platform)
+        source_list = f"""\
+Types: deb
+URIs: http://{brand}.{archive}
+Suites: {series}
+Components: {codename} {platform_archive}
+Signed-By: /usr/share/keyrings/ubuntu-oem-keyring.gpg
+"""
+    elif series == "focal" or series == "noble" or codename == "somerville":
         source_list = f"""\
 deb http://{brand}.{archive}/ {series} {codename}
 # deb-src http://{brand}.{archive}/ {series} {codename}
@@ -418,7 +427,10 @@ debian-tag = {branch}_%(version)s
         platformStr = Platform
         platformsStr = platformStr + "."
 
-    if series == "noble":
+    if series == "resolute":
+        debian_policy = "4.7.3"
+        debhelper_version = "13"
+    elif series == "noble":
         debian_policy = "4.6.2"
         debhelper_version = "13"
     elif series == "jammy":
