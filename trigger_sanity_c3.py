@@ -273,34 +273,50 @@ def is_supported_kernel_meta(platform_info_dir, project, launchpad_tag, kernel_m
 
 
 def has_existing_queue(cid):
-    """Returns True when machine has existing queues in testflinger."""
-    try:
-        logger.info(f"Checking queue status for CID: {cid}...")
-        result = subprocess.run(
-            [
-                C3_V2_API_CLI,
-                "--get",
-                f"/api/v2/physicalmachinesview/{cid}",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        data = clean_json_string(result.stdout)
-        if not data:
-            logger.warning(f"Failed to fetch queue details for CID: {cid}")
+    """Returns True when machine has existing queues in testflinger.
+
+    Retries up to 5 times with exponential backoff to handle transient
+    network hiccups or bad API responses (2s, 4s, 8s, 16s between retries).
+    """
+    MAX_RETRIES = 5
+    for attempt in range(MAX_RETRIES):
+        try:
+            logger.info(f"Checking queue status for CID: {cid}...")
+            result = subprocess.run(
+                [
+                    C3_V2_API_CLI,
+                    "--get",
+                    f"/api/v2/physicalmachinesview/{cid}",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            data = clean_json_string(result.stdout)
+            if not data:
+                logger.warning(f"Failed to fetch queue details for CID: {cid}")
+                return False
+
+            if data.get("queues"):
+                logger.debug(f"CID {cid} has existing queues: {data['queues']}")
+                return True
+
+            logger.debug(f"CID {cid} has no queues")
             return False
 
-        if data.get("queues"):
-            logger.debug(f"CID {cid} has existing queues: {data['queues']}")
-            return True
-
-        logger.debug(f"CID {cid} has no queues")
-        return False
-
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        logger.error(f"Failed to check queue status for CID {cid}: {e}")
-        return False
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = 2 ** (attempt + 1)
+                logger.warning(
+                    f"Failed to check queue status for CID {cid} (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
+                    f"Retrying in {sleep_time}s..."
+                )
+                time.sleep(sleep_time)
+            else:
+                logger.error(
+                    f"Failed to check queue status for CID {cid} after {MAX_RETRIES} attempts: {e}"
+                )
+                return False
 
 
 def is_reserved_cid(platform_info_dir, cid):
