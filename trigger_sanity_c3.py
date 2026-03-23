@@ -319,40 +319,26 @@ def has_existing_queue(cid):
                 return False
 
 
-def is_reserved_cid(platform_info_dir, cid):
-    # Reserved CIDs are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
-    # Returns True when CID is listed in "cids"
+def _is_in_exclusion_list(platform_info_dir, key, value):
+    """Check if value is listed under key in the daily-sanity exclusion file."""
     reserved_file_path = (
         Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
     )
-
     try:
-        with open(reserved_file_path, "r") as file:
-            data = json.load(file)
-            reserved_cids = data.get("cids", [])
-            if cid in reserved_cids:
-                return True
+        with open(reserved_file_path) as f:
+            data = json.load(f)
+            return value in data.get(key, [])
     except FileNotFoundError:
         logger.info(f"{reserved_file_path} is missing. Skip...")
         return False
+
+
+def is_reserved_cid(platform_info_dir, cid):
+    return _is_in_exclusion_list(platform_info_dir, "cids", cid)
 
 
 def is_reserved_tag(platform_info_dir, tag):
-    # Reserved tags are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
-    # Returns True when tag is listed in "components"
-    reserved_file_path = (
-        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
-    )
-
-    try:
-        with open(reserved_file_path, "r") as file:
-            data = json.load(file)
-            reserved_tags = data.get("components", [])
-            if tag in reserved_tags:
-                return True
-    except FileNotFoundError:
-        logger.info(f"{reserved_file_path} is missing. Skip...")
-        return False
+    return _is_in_exclusion_list(platform_info_dir, "components", tag)
 
 
 def get_supported_cids(available_cids, iso_url, platform_info_dir):
@@ -833,6 +819,7 @@ def main():
     else:
         jenkins_server = get_jenkins_connection()
         github_api = None
+        workflow_id = None
 
     # only run on CIDs in Lab10
     if len(args.cid) == 1:
