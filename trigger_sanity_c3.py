@@ -507,7 +507,7 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
             MAX_POLL_ATTEMPTS = 5
             BASE_SLEEP = 2
             for attempt in range(MAX_POLL_ATTEMPTS):
-                sleep_time = BASE_SLEEP * (2 ** attempt)
+                sleep_time = BASE_SLEEP * (2**attempt)
                 time.sleep(sleep_time)
                 try:
                     runs_after = api.get_workflow_runs(
