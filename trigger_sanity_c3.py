@@ -14,6 +14,15 @@ GitHub Actions:
   --github-branch develop-branch \
   --cid 202411-35996 --iso-url <url> --plan <plan>
 
+When multiple CIDs are provided, GitHub Actions is triggered once with CIDs joined by commas:
+
+./trigger_sanity_c3.py --use-github-actions \
+    --github-owner canonical \
+    --github-repo oem-enablement-ops \
+    --github-workflow provision-test-image.yml \
+    --github-branch develop-branch \
+    --cid 202411-35996 202411-35997 --iso-url <url> --plan <plan>
+
 Jenkins job::
 1. Trigger job on a specific CID:
    - Specify the CID with --cid
@@ -264,70 +273,72 @@ def is_supported_kernel_meta(platform_info_dir, project, launchpad_tag, kernel_m
 
 
 def has_existing_queue(cid):
-    """Returns True when machine has existing queues in testflinger."""
-    try:
-        logger.info(f"Checking queue status for CID: {cid}...")
-        result = subprocess.run(
-            [
-                C3_V2_API_CLI,
-                "--get",
-                f"/api/v2/physicalmachinesview/{cid}",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        data = clean_json_string(result.stdout)
-        if not data:
-            logger.warning(f"Failed to fetch queue details for CID: {cid}")
+    """Returns True when machine has existing queues in testflinger.
+
+    Retries up to 5 times with exponential backoff to handle transient
+    network hiccups or bad API responses (2s, 4s, 8s, 16s between retries).
+    """
+    MAX_RETRIES = 5
+    for attempt in range(MAX_RETRIES):
+        try:
+            logger.info(f"Checking queue status for CID: {cid}...")
+            result = subprocess.run(
+                [
+                    C3_V2_API_CLI,
+                    "--get",
+                    f"/api/v2/physicalmachinesview/{cid}",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            data = clean_json_string(result.stdout)
+            if not data:
+                logger.warning(f"Failed to fetch queue details for CID: {cid}")
+                return False
+
+            if data.get("queues"):
+                logger.debug(f"CID {cid} has existing queues: {data['queues']}")
+                return True
+
+            logger.debug(f"CID {cid} has no queues")
             return False
 
-        if data.get("queues"):
-            logger.debug(f"CID {cid} has existing queues: {data['queues']}")
-            return True
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = 2 ** (attempt + 1)
+                logger.warning(
+                    f"Failed to check queue status for CID {cid} (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
+                    f"Retrying in {sleep_time}s..."
+                )
+                time.sleep(sleep_time)
+            else:
+                logger.error(
+                    f"Failed to check queue status for CID {cid} after {MAX_RETRIES} attempts: {e}"
+                )
+                return False
 
-        logger.debug(f"CID {cid} has no queues")
-        return False
 
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        logger.error(f"Failed to check queue status for CID {cid}: {e}")
+def _is_in_exclusion_list(platform_info_dir, key, value):
+    """Check if value is listed under key in the daily-sanity exclusion file."""
+    reserved_file_path = (
+        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
+    )
+    try:
+        with open(reserved_file_path) as f:
+            data = json.load(f)
+            return value in data.get(key, [])
+    except FileNotFoundError:
+        logger.info(f"{reserved_file_path} is missing. Skip...")
         return False
 
 
 def is_reserved_cid(platform_info_dir, cid):
-    # Reserved CIDs are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
-    # Returns True when CID is listed in "cids"
-    reserved_file_path = (
-        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
-    )
-
-    try:
-        with open(reserved_file_path, "r") as file:
-            data = json.load(file)
-            reserved_cids = data.get("cids", [])
-            if cid in reserved_cids:
-                return True
-    except FileNotFoundError:
-        logger.info(f"{reserved_file_path} is missing. Skip...")
-        return False
+    return _is_in_exclusion_list(platform_info_dir, "cids", cid)
 
 
 def is_reserved_tag(platform_info_dir, tag):
-    # Reserved tags are in oem-hw-info/daily-sanity/daily-sanity-exclude.json
-    # Returns True when tag is listed in "components"
-    reserved_file_path = (
-        Path(platform_info_dir).parent / "daily-sanity" / "daily-sanity-exclude.json"
-    )
-
-    try:
-        with open(reserved_file_path, "r") as file:
-            data = json.load(file)
-            reserved_tags = data.get("components", [])
-            if tag in reserved_tags:
-                return True
-    except FileNotFoundError:
-        logger.info(f"{reserved_file_path} is missing. Skip...")
-        return False
+    return _is_in_exclusion_list(platform_info_dir, "components", tag)
 
 
 def get_supported_cids(available_cids, iso_url, platform_info_dir):
@@ -496,7 +507,7 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
             MAX_POLL_ATTEMPTS = 5
             BASE_SLEEP = 2
             for attempt in range(MAX_POLL_ATTEMPTS):
-                sleep_time = BASE_SLEEP * (2**attempt)
+                sleep_time = BASE_SLEEP * (2 ** attempt)
                 time.sleep(sleep_time)
                 try:
                     runs_after = api.get_workflow_runs(
@@ -808,6 +819,7 @@ def main():
     else:
         jenkins_server = get_jenkins_connection()
         github_api = None
+        workflow_id = None
 
     # only run on CIDs in Lab10
     if len(args.cid) == 1:
@@ -869,6 +881,7 @@ def main():
         supported_cids = get_supported_cids(
             available_cids, args.iso_url, args.platform_info_dir
         )
+        selected_cids = []
         for cid in args.cid:
             if args.platform_info_dir:
                 if is_reserved_cid(args.platform_info_dir, cid):
@@ -887,8 +900,14 @@ def main():
             if not has_existing_queue(cid):
                 logger.error("CID does not have testflinger queue")
                 sys.exit(1)
-            parameters["CID"] = cid
+            selected_cids.append(cid)
 
+        if not selected_cids:
+            logger.error("No valid CIDs available to trigger")
+            sys.exit(1)
+
+        if args.use_github_actions:
+            parameters["CID"] = ",".join(selected_cids)
             if not trigger_ci(
                 args.use_github_actions,
                 github_api,
@@ -899,8 +918,23 @@ def main():
                 parameters,
                 args.dry_run,
             ):
-                logger.error(f"Failed to trigger for CID: {cid}")
-                continue
+                logger.error(f"Failed to trigger workflow for CIDs: {selected_cids}")
+                sys.exit(1)
+        else:
+            for cid in selected_cids:
+                parameters["CID"] = cid
+                if not trigger_ci(
+                    args.use_github_actions,
+                    github_api,
+                    workflow_id,
+                    args.github_branch,
+                    jenkins_server,
+                    job_name,
+                    parameters,
+                    args.dry_run,
+                ):
+                    logger.error(f"Failed to trigger for CID: {cid}")
+                    continue
     else:
         # No CID is provided, get all CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
@@ -916,8 +950,8 @@ def main():
             logger.error("No supported CIDs found for the given ISO file")
             sys.exit(1)
 
-        for cid in supported_cids:
-            parameters["CID"] = cid
+        if args.use_github_actions:
+            parameters["CID"] = ",".join(supported_cids)
             if not trigger_ci(
                 args.use_github_actions,
                 github_api,
@@ -928,7 +962,21 @@ def main():
                 parameters,
                 args.dry_run,
             ):
-                logger.error(f"Failed to trigger for CID: {cid}")
+                logger.error(f"Failed to trigger workflow for CIDs: {supported_cids}")
+        else:
+            for cid in supported_cids:
+                parameters["CID"] = cid
+                if not trigger_ci(
+                    args.use_github_actions,
+                    github_api,
+                    workflow_id,
+                    args.github_branch,
+                    jenkins_server,
+                    job_name,
+                    parameters,
+                    args.dry_run,
+                ):
+                    logger.error(f"Failed to trigger for CID: {cid}")
 
 
 if __name__ == "__main__":
