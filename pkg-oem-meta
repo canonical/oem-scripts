@@ -520,14 +520,14 @@ License: GPL-3
         if "bios_id" in vars(args).keys():
             for bios_id in args.bios_id:
                 f.write(
-                    "alias pci:*sv00001028sd0000{0}bc0Csc05* meta {1}\n".format(
+                    "alias dmi:bvnDellInc.:*:svnDellInc.:*:sku{0}:* meta {1}\n".format(
                         bios_id.upper(), meta
                     )
                 )
         elif "sd_id" in vars(args).keys():
             for sd_id in args.sd_id:
                 f.write(
-                    "alias pci:*sv0000103Csd0000{0}bc0Csc05* meta {1}\n".format(
+                    "alias dmi:bvnHP:*:rvnHP:*:rn{0}:* meta {1}\n".format(
                         sd_id.upper(), meta
                     )
                 )
