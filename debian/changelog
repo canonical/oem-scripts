@@ -1,3 +1,9 @@
+oem-scripts (2.69) noble; urgency=medium
+
+  * setup-apt-dir.sh: Add support for --codename resolute
+
+ -- Yao Wei (魏銘廷) <yao.wei@canonical.com>  Tue, 14 Apr 2026 14:30:01 +0800
+
 oem-scripts (2.68) noble; urgency=medium
 
   * Release 2.68.
