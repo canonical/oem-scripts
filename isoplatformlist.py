@@ -9,8 +9,9 @@ import argparse
 import logging
 import yaml
 
-series_codename_map = {"noble": "numbat"}
-series_release_map = {"noble": "24.04"}
+series_codename_map = {"noble": "numbat", "resolute": "raccoon"}
+
+series_release_map = {"noble": "24.04", "resolute": "26.04"}
 
 
 def mount_iso(iso_path, mount_point):
@@ -123,7 +124,7 @@ def main():
             )
             sys.exit(4)
         # find project meta sideload Packages
-        if kernel.startswith("hwe"):
+        if "hwe" in kernel:
             try:
                 release = series_release_map[series]
                 kernel_meta = f"linux-generic-hwe-{release}"
