@@ -527,7 +527,7 @@ License: GPL-3
         elif "sd_id" in vars(args).keys():
             for sd_id in args.sd_id:
                 f.write(
-                    "alias dmi:bvnHP:*:rvnHP:*:rn{0}:* meta {1}\n".format(
+                    "alias dmi:*:svnHP:*:rvnHP:*:rn{0}:* meta {1}\n".format(
                         sd_id.upper(), meta
                     )
                 )
