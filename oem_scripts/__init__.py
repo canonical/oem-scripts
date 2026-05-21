@@ -42,9 +42,15 @@ ALLOWED_KERNEL_META_LIST = (
     "linux-oem-24.04b",
     "linux-oem-24.04a",
     "linux-oem-24.04",
+    "linux-oem-26.04d",
+    "linux-oem-26.04c",
+    "linux-oem-26.04b",
+    "linux-oem-26.04a",
+    "linux-oem-26.04",
     "linux-generic-hwe-20.04",
     "linux-generic-hwe-22.04",
     "linux-generic-hwe-24.04",
+    "linux-generic-hwe-26.04",
     "linux-generic",
 )
 
