@@ -216,6 +216,11 @@ def generate_debian_package(version, bootstrap=False, real=False):
             extra = ", linux-generic-hwe-24.04"
         flavour = "default"
         grub_flavour = "generic"
+    elif args.kernel == "linux-generic-hwe-26.04":
+        if real:
+            extra = ", linux-generic-hwe-26.04"
+        flavour = "default"
+        grub_flavour = "generic"
     elif args.kernel == "linux-oem-20.04b":
         if real:
             extra = ", linux-oem-20.04b | linux-oem-20.04"
@@ -232,6 +237,11 @@ def generate_debian_package(version, bootstrap=False, real=False):
         flavour = "oem"
         grub_flavour = "oem"
     elif args.kernel.startswith("linux-oem-24.04"):
+        if real:
+            extra = f", {args.kernel}"
+        flavour = "oem"
+        grub_flavour = "oem"
+    elif args.kernel.startswith("linux-oem-26.04"):
         if real:
             extra = f", {args.kernel}"
         flavour = "oem"
