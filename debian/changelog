@@ -1,3 +1,9 @@
+oem-scripts (2.70) resolute; urgency=medium
+
+  * Release 2.70
+
+ -- Dirk Su <dirk.su@canonical.com>  Thu, 04 Jun 2026 11:16:40 +0800
+
 oem-scripts (2.69) noble; urgency=medium
 
   * setup-apt-dir.sh: Add support for --codename resolute
