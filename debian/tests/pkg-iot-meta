@@ -22,7 +22,7 @@ grep "oem-lyoncore-meta (22.04ubuntu1) jammy; urgency=medium" debian/changelog
 grep "\* Meta package for lyoncore project." debian/changelog
 
 grep "Source: oem-lyoncore-meta" debian/control
-grep "Build-Depends: debhelper-compat (= 12), config-package-dev (>= 5.0)" debian/control
+grep "Build-Depends: debhelper-compat (= 12)" debian/control
 grep "Package: oem-lyoncore-meta" debian/control
 grep "Depends: \${misc:Depends}, ubuntu-oem-keyring" debian/control
 grep "^Restrictions: needs-root$" debian/tests/control
@@ -31,13 +31,10 @@ grep "^apt-get autoremove --purge --yes oem-lyoncore-meta$" debian/tests/meta
 
 grep "Upstream-Name: oem-lyoncore-meta" debian/copyright
 
-grep "dh \$@ --with config-package$" debian/rules
+grep "dh \$@$" debian/rules
 
-grep "[DEFAULT]" release-upgrades.oem
-grep "Prompt=never" release-upgrades.oem
-
-grep "/etc/update-manager/release-upgrades\.oem" debian/displace
-grep "\.oem" debian/displace-extension
+grep "[DEFAULT]" oem-release-upgrades.cfg
+grep "Prompt=never" oem-release-upgrades.cfg
 
 cd ..
 rm -fr oem-lyoncore-meta
