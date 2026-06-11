@@ -80,8 +80,8 @@ deb http://{project_name}.{archive}/ {series} {project_name}
     with open(source_file, "w") as f:
         f.write(source_list)
 
-    with open("release-upgrades.oem", "w") as f:
-        f.write("[DEFAULT]\n" "Prompt=never")
+    with open("oem-release-upgrades.cfg", "w") as f:
+        f.write("[DEFAULT]\n" "Prompt=never\n")
 
     if not os.path.exists("debian"):
         os.mkdir("debian")
@@ -123,7 +123,7 @@ debian-tag = {branch}_%(version)s
 Section: misc
 Priority: optional
 Maintainer: Commercial Engineering <commercial-engineering@canonical.com>
-Build-Depends: debhelper-compat (= 12), config-package-dev (>= 5.0)
+Build-Depends: debhelper-compat (= 12)
 Standards-Version: 4.5.0
 Vcs-Git: {git_abbr}
 Vcs-Browser: {git_browser}
@@ -164,16 +164,10 @@ License: GPL-3
 """
         )
 
-    with open("displace", "w") as f:
-        f.write("/etc/update-manager/release-upgrades.oem\n")
-
-    with open("displace-extension", "w") as f:
-        f.write(".oem\n")
-
     with open("install", "w") as f:
         f.write(
             f"{source_file} /etc/apt/sources.list.d/\n"
-            "release-upgrades.oem /etc/update-manager/\n"
+            "oem-release-upgrades.cfg /etc/update-manager/release-upgrades.d/\n"
         )
 
     with open("rules", "w") as f:
@@ -184,7 +178,7 @@ License: GPL-3
 export DH_VERBOSE=1
 
 %:
-\tdh $@ --with config-package\n"""
+\tdh $@\n"""
         )
 
     os.chmod("rules", 0o755)
