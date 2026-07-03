@@ -286,13 +286,13 @@ fi
 if ! gpg --fingerprint $PUBKEY >/dev/null 2>&1; then
     gpg --keyserver keyserver.ubuntu.com --recv-key $PUBKEY
 fi
-gpg --export --armor $PUBKEY > "$APTDIR/$PUBKEY.pub"
+gpg --export $PUBKEY > "$APTDIR/$PUBKEY.pub"
 
 for PUBKEY in "${KEYS[@]}"; do
     if ! gpg --fingerprint "$PUBKEY" >/dev/null 2>&1; then
         gpg --keyserver keyserver.ubuntu.com --recv-key "$PUBKEY"
     fi
-    gpg --export --armor "$PUBKEY" > "$APTDIR/$PUBKEY.pub"
+    gpg --export "$PUBKEY" > "$APTDIR/$PUBKEY.pub"
 done
 
 # Process extra repos and inject signed-by if keys are provided
