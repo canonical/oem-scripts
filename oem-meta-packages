@@ -738,7 +738,10 @@ apt-get full-upgrade --yes
 
 
 def deal_with_debian_control(git_dir, branch) -> bool:
-    if series == "noble":
+    if series == "resolute":
+        debian_policy = "4.7.3"
+        debhelper_version = "13"
+    elif series == "noble":
         debian_policy = "4.6.2"
         debhelper_version = "13"
     elif series == "jammy":
@@ -2274,7 +2277,7 @@ elif args.subcommand == "unsubscribe":
 elif args.subcommand == "create":
     platform_json = json.load(args.platform)
     series = platform_json["series"]
-    if series != "focal" and series != "jammy" and series != "noble":
+    if series not in ["focal", "jammy", "noble", "resolute"]:
         error(f"{series} is not supported yet.")
         exit(1)
     project = platform_json["project"]
