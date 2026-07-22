@@ -1,3 +1,23 @@
+oem-scripts (2.71) resolute; urgency=medium
+
+  [ Kai-Chuan Hsieh ]
+  * pkg-oem-meta: Update modaliases matching for Dell/HP
+  * isoplatformlist.py: Add resolute OEM image support
+  * fix: Use svn to match HP
+  * feat: Add 26.04 kernel support
+
+  [ Ethan Hsieh ]
+  * pkg-iot-meta: migrate release-upgrades to release-upgrades.d drop-in
+
+  [ Dirk Su ]
+  * releasing package oem-scripts version 2.70
+  * fix: Update the dmi string matching for stella
+
+  [ Yao Wei (魏銘廷) ]
+  * setup-apt-dir.sh: since 26.04 it accepts dearmored gpg key only
+
+ -- Yao Wei (魏銘廷) <yao.wei@canonical.com>  Wed, 22 Jul 2026 11:03:00 +0800
+
 oem-scripts (2.70) resolute; urgency=medium
 
   * Release 2.70
