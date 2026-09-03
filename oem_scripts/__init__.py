@@ -155,7 +155,7 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
         with open(os.path.join(git_dir, "debian", "modaliases"), "r") as modaliases:
             for line in modaliases:
                 result = prog.match(line.strip())
-                if result is None:
+                if result is None or result.lastindex is None:
                     continue
                 if result.group(result.lastindex) != pkg_name:
                     error(
@@ -164,6 +164,8 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
                     return False
                 if result.lastindex == 5:
                     ids.append((result.group(1), result.group(2), result.group(4)))
+                elif result.lastindex == 3:
+                    ids.append(result.group(1) or result.group(2))
                 else:
                     ids.append(result.group(1))
         kernel_flavour = None
