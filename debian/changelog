@@ -1,6 +1,7 @@
 oem-scripts (2.72) resolute; urgency=medium
 
   * oem-metapackage-mir-check: Host in oem-scripts
+  * oem-meta-package.mir.jinja2: Link to this repo for the mir-check script
   * mir-bug: Use hosted oem-metapackage-mir-check instead
   * oem-scripts/__init__.py: Update modaliases matching for Dell/HP
 
