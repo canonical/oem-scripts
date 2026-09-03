@@ -10,6 +10,7 @@ modinfo2json.py /usr/bin
 obj-*/bin/autoISO /usr/sbin
 oem-meta-package.mir.jinja2 /usr/share/oem-scripts
 oem-meta-package.sru.jinja2 /usr/share/oem-scripts
+oem-metapackage-mir-check /usr/bin
 recovery-from-iso.sh /usr/bin
 run-autopkgtest /usr/bin
 setup-apt-dir.sh /usr/bin
