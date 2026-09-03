@@ -1,3 +1,11 @@
+oem-scripts (2.72) resolute; urgency=medium
+
+  * oem-metapackage-mir-check: Host in oem-scripts
+  * mir-bug: Use hosted oem-metapackage-mir-check instead
+  * oem-scripts/__init__.py: Update modaliases matching for Dell/HP
+
+ -- Thomas Chen <thomas.chen@canonical.com>  Thu, 03 Sep 2026 13:53:44 +0800
+
 oem-scripts (2.71) resolute; urgency=medium
 
   [ Kai-Chuan Hsieh ]
