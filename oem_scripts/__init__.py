@@ -137,11 +137,11 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
 
         if project == "somerville":
             prog = re.compile(
-                r"alias pci:\*sv00001028sd0000([0-9A-F]{4})[^ ]* meta (.*)"
+                r"alias (?:dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku([0-9A-F]{4}):\*|pci:\*sv00001028sd0000([0-9A-F]{4})[^ ]*) meta (.*)"
             )
         elif project == "stella":
             prog = re.compile(
-                r"alias pci:\*sv0000103Csd0000([0-9A-F]{4})[^ ]* meta (.*)"
+                r"alias (?:dmi:\*:svnHP:\*:rvnHP:rn([0-9A-F]{4}):\*|pci:\*sv0000103Csd0000([0-9A-F]{4})[^ ]*) meta (.*)"
             )
         elif project == "sutton":
             prog = re.compile(
