@@ -889,12 +889,6 @@ def check_and_update_bug_attachments(
 
     with TemporaryDirectory() as tmpdir:
         os.chdir(tmpdir)
-        _run_command(
-            [
-                "wget",
-                "https://git.launchpad.net/ubuntu-archive-tools/plain/oem-metapackage-mir-check",
-            ]
-        )
         _run_command(git_command)
         git_dir = os.path.join(tmpdir, pkg_name)
         os.chdir(git_dir)
@@ -919,7 +913,7 @@ def check_and_update_bug_attachments(
         # It should generate some debdiff so the return code should be 1 unless comparing to oem-qemu-meta itself.
         debug(f"TZ={args.tz}")
         content, _, _ = _run_command(
-            ["bash", "oem-metapackage-mir-check", dsc],
+            ["oem-metapackage-mir-check", dsc],
             returncode=(1,),
             env=dict(os.environ, TZ=args.tz),
         )

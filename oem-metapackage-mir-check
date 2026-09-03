@@ -1,0 +1,161 @@
+#!/bin/bash
+
+# Copyright (C) 2020  Canonical Ltd.
+# Author: Iain Lane <iain.lane@canonical.com>
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# Compare a given source package with the oem-qemu-meta reference package, to
+# see if it complies with the MIR exception granted in
+# https://wiki.ubuntu.com/MIRTeam/Exceptions/OEM
+
+set -e
+set -u
+
+shopt -s nullglob
+
+THIS="$(basename "${0}")"
+
+ensure_programs() {
+    if [ ${#} -gt 0 ] && ! type "${1}" >/dev/null 2>/dev/null; then
+        echo "Required program $1 not found." >&2
+        exit 1
+    fi
+
+    shift
+
+    if [ ${#} -gt 0 ]; then
+        ensure_programs "${@}"
+    fi
+}
+
+if [ ${#} -ne 1 ]; then
+        echo -e "Usage: ${THIS} <dsc>\\n" >&2
+        cat <<EOM >&2
+Compare the given package against the oem-qemu-meta reference package. Check
+that all the differences are inconsequential or expected (different modalias,
+different package name), and then promote or NEW the package directly to main.
+
+https://wiki.ubuntu.com/MIRTeam/Exceptions/OEM
+EOM
+        exit 1
+fi
+
+ensure_programs pull-lp-source debdiff
+
+if ! [ -e "${1}" ]; then
+    echo "${THIS}: ${1} not found" >&2
+    exit 1
+fi
+
+DSC="$(realpath -e "${1}")"
+
+WORKINGDIR=$(mktemp -d)
+
+trap 'rm -rf ${WORKINGDIR}' EXIT HUP INT QUIT TERM
+
+pushd "${WORKINGDIR}" >/dev/null
+
+# Download the reference package
+pull-lp-source oem-qemu-meta 2>/dev/null
+
+NEWMETA=$(sed -n -e's/^Source: //p' "$DSC")
+
+dpkg-source -x "$DSC" >/dev/null
+REL=$(dpkg-parsechangelog -S Distribution -l ${NEWMETA}-*/debian/changelog)
+
+OEMCODE=${NEWMETA#oem-}
+OEM=${OEMCODE%%[.-]*}
+MODEL=${OEMCODE#*[.-]}
+MODEL=${MODEL%-meta}
+if [ "$OEMCODE" = "$OEM.$MODEL-meta" ]; then
+	MODEL=${MODEL/-/.}
+	ARCHIVE=${OEM}.${MODEL%.*}
+else
+	ARCHIVE=${OEM}-${MODEL}
+fi
+
+case $OEM in
+	somerville)
+		REALNAME=dell
+		;;
+	stella)
+		REALNAME=hp
+		;;
+	sutton)
+		REALNAME=lenovo
+		;;
+esac
+
+sed -i \
+    -e"/Vcs-Git/ s,oem-qemu-meta,oem-$OEM-projects-meta -b $MODEL-$REL-ubuntu,;
+       /Vcs-Browser/ s,oem-qemu-meta,oem-$OEM-projects-meta/+ref/$MODEL-$REL-ubuntu,;
+       s/oem-qemu-meta/$NEWMETA/;
+       /Upstream-Name:/a\
+Source: https://code.launchpad.net/~oem-solutions-engineers/pc-enablement/+git/oem-$OEM-projects-meta/+ref/$MODEL-$REL-ubuntu
+" \
+	oem-qemu-meta-*/debian/control \
+	oem-qemu-meta-*/debian/copyright \
+	oem-qemu-meta-*/debian/install \
+	oem-qemu-meta-*/debian/tests/meta \
+	oem-qemu-meta-*/oem-qemu-meta.list
+
+(cd oem-qemu-meta-* && mv oem-qemu-meta.list ${NEWMETA}.list)
+cat > oem-qemu-meta-*/${NEWMETA}.list <<EOF
+deb http://$REALNAME.archive.canonical.com/ $REL $OEM
+# deb-src http://$REALNAME.archive.canonical.com/ $REL $OEM
+deb http://$REALNAME.archive.canonical.com/ $REL $ARCHIVE
+# deb-src http://$REALNAME.archive.canonical.com/ $REL $ARCHIVE
+EOF
+
+case $OEM in
+	somerville)
+		unmatched=$(grep -Ev 'dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku.{4}:\*|pci:\*sv00001028sd0000.{4}bc0Csc05\*' \
+				${NEWMETA}-*/debian/modaliases || true)
+		;;
+	stella)
+		unmatched=$(grep -Ev 'dmi:\*:svnHP:\*:rvnHP:rn.{4}:\*|pci:\*sv0000103Csd0000.{4}bc0Csc05\*' \
+				${NEWMETA}-*/debian/modaliases || true)
+		;;
+	sutton)
+		unmatched=$(grep -v 'dmi:\*bvnLENOVO:bvr.*:pvr' \
+				${NEWMETA}-*/debian/modaliases || true)
+		;;
+	*)
+		# unknown OEM, needs updating along with
+		# https://wiki.ubuntu.com/MIRTeam/Exceptions/OEM
+		unmatched=$(cat ${NEWMETA}-*/debian/modaliases)
+		;;
+esac
+
+if [ -n "$unmatched" ]; then
+	echo "Error: unknown modaliases for $REALNAME:"
+	echo "$unmatched"
+	exit 1
+fi
+
+echo "debian/modaliases ok per policy"
+
+if [ -t 1 ] && type colordiff >/dev/null 2>/dev/null; then
+	(cat ${NEWMETA}-*/debian/changelog;
+	diff -uNr -x gbp.conf -x changelog oem-qemu-meta-* ${NEWMETA}-* \
+		2>/dev/null) | colordiff
+else
+	cat ${NEWMETA}-*/debian/changelog
+	diff -uNr -x gbp.conf -x changelog oem-qemu-meta-* ${NEWMETA}-* \
+		2>/dev/null
+fi
+
+
