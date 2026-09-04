@@ -215,11 +215,13 @@ case "$1" in
             shift
         fi
         resource=$(jq -r "$@")
+        # The ${LAUNCHPAD_API}/${LAUNCHPAD_URL} patterns keep this working when
+        # they are overridden, e.g. against the mock server in the autopkgtest.
         case "$resource" in
-            ("https://api"*)
+            ("${LAUNCHPAD_API}"*|"https://api"*)
                 get_api "$resource"
                 ;;
-            ("https://launchpad"*)
+            ("${LAUNCHPAD_URL}"*|"https://launchpad"*)
                 download_url "$resource"
                 ;;
             (*)
