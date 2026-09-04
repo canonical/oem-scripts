@@ -52,7 +52,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 # oem-flavour.cfg only exists in oem branch.
 if [ -f oem-flavour.cfg ]; then
@@ -82,7 +82,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 # oem-flavour.cfg only exists in oem branch.
 if [ ! -f oem-flavour.cfg ]; then
@@ -122,7 +122,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 # oem-flavour.cfg only exists in oem branch.
 if [ -f oem-flavour.cfg ]; then
@@ -152,7 +152,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 # oem-flavour.cfg only exists in oem branch.
 if [ ! -f oem-flavour.cfg ]; then
@@ -190,7 +190,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 git checkout ivysaur-jammy-oem
 
@@ -213,7 +213,7 @@ grep "^apt-get autoremove --purge --yes oem-stella-ivysaur-meta$" debian/tests/m
 
 grep "Upstream-Name: oem-stella-ivysaur-meta" debian/copyright
 
-grep "alias pci:\*sv0000103Csd00008750bc0Csc05\* meta oem-stella-ivysaur-meta" debian/modaliases
+grep "alias dmi:\*:svnHP:\*:rvnHP:rn8750:\* meta oem-stella-ivysaur-meta" debian/modaliases
 
 cd ..
 rm -fr oem-stella-ivysaur-meta
