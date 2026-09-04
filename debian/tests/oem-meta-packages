@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_PRODUCTION"
+require_private_archive
+
 cd "$AUTOPKGTEST_ARTIFACTS" || exit 1
 
 export LAUNCHPAD_API="https://api.launchpad.net/"

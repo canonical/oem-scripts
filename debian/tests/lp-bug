@@ -5,6 +5,10 @@ IFS=$'\n\t'
 
 export LAUNCHPAD_API="https://api.staging.launchpad.net/"
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_STAGING"
+
 # Search for the latest bug to test.
 while read -r bug; do
     id=$(basename "$bug")

@@ -5,6 +5,10 @@ IFS=$'\n\t'
 
 export LAUNCHPAD_API="https://api.staging.launchpad.net/"
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_STAGING"
+
 mir-bug create -o bug_id somerville bronn "some Dell platforms"
 PUBLIC_BUG=$(cat bug_id)
 

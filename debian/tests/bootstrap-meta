@@ -6,6 +6,10 @@ IFS=$'\n\t'
 export LAUNCHPAD_API="https://api.staging.launchpad.net/"
 export COPYRIGHT_YEAR=2021
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_STAGING"
+
 # Change the working folder to avoid reading the template files under the source code folder.
 cd /tmp
 
