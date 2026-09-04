@@ -1,0 +1,41 @@
+#!/bin/bash
+# The offline counterpart of debian/tests/lp-dl-attm.  Bug 1000001 is served as
+# a public bug (attachments are fetched with wget) and bug 1000002 as a private
+# one (attachments go through lp-api), so both branches are covered.
+
+exec 2>&1
+set -euo pipefail
+IFS=$'\n\t'
+
+TESTS_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=debian/tests/lp-mock-common
+. "$TESTS_DIR/lp-mock-common"
+
+trap lp_mock_cleanup EXIT INT TERM
+
+WORKDIR=$(mktemp -d)
+cd "$WORKDIR"
+
+export LAUNCHPAD_TOKEN="mock-token:mock-secret:mock-consumer"
+
+start_lp_mock production
+export LAUNCHPAD_API="$LP_MOCK_API"
+export LAUNCHPAD_URL="$LP_MOCK_WEB"
+
+echo "=== Public bug ==="
+lp-dl-attm 1000001
+find lp1000001
+if [ ! -s lp1000001/public-attachment.txt ]; then
+    echo "'lp-dl-attm 1000001' did not download the public attachment."
+    exit 1
+fi
+
+echo "=== Private bug ==="
+lp-dl-attm 1000002
+find lp1000002
+if [ ! -s lp1000002/private-attachment.txt ]; then
+    echo "'lp-dl-attm 1000002' did not download the private attachment."
+    exit 1
+fi
+
+exit

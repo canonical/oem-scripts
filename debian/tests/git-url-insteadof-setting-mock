@@ -1,0 +1,39 @@
+#!/bin/bash
+# The offline counterpart of debian/tests/git-url-insteadof-setting.  The real
+# test clones a Launchpad-hosted repository over the lp: prefix; here the prefix
+# is pointed at a local repository instead, so the rewrite is still exercised
+# without needing a Launchpad SSH key.
+
+exec 2>&1
+set -euo pipefail
+IFS=$'\n\t'
+
+WORKDIR=$(mktemp -d)
+trap 'rm -rf "$WORKDIR"' EXIT INT TERM
+cd "$WORKDIR"
+
+# Keep the testbed's own git configuration out of the way.
+export GIT_CONFIG_GLOBAL="$WORKDIR/gitconfig"
+export GIT_CONFIG_SYSTEM=/dev/null
+git config --global user.name "Commercial Engineering"
+git config --global user.email "commercial-engineering@canonical.com"
+git config --global init.defaultBranch main
+
+REPO="$WORKDIR/lp/~oem-solutions-engineers/oem-dev-tools/+git/oem-scripts"
+mkdir -p "$(dirname "$REPO")"
+git init -q "$REPO"
+echo "oem-scripts" > "$REPO/README"
+git -C "$REPO" add README
+git -C "$REPO" commit -q -m "Initial commit"
+
+# This is the setting the credential setup installs on a real testbed.
+git config --global "url.file://$WORKDIR/lp/.insteadOf" lp:
+
+git clone -q --depth 1 lp:~oem-solutions-engineers/oem-dev-tools/+git/oem-scripts
+
+if [ ! -f oem-scripts/README ]; then
+    echo "Cloning through the lp: prefix did not produce a working tree."
+    exit 1
+fi
+
+exit

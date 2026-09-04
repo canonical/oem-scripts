@@ -1,0 +1,57 @@
+#!/bin/bash
+# The offline counterpart of debian/tests/get-private-ppa.  Both the private and
+# the public PPA are served by debian/tests/lp-mock-server.
+
+exec 2>&1
+set -euo pipefail
+IFS=$'\n\t'
+
+TESTS_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=debian/tests/lp-mock-common
+. "$TESTS_DIR/lp-mock-common"
+
+trap lp_mock_cleanup EXIT INT TERM
+
+# get-private-ppa refuses to run without a token, and lp-api needs one to build
+# the Authorization header. The mock does not check the signature.
+export LAUNCHPAD_TOKEN="mock-token:mock-secret:mock-consumer"
+
+PRIVATE_FINGERPRINT="23CBDB455F3792D18EF17E63A630CA96910990FF"
+PUBLIC_FINGERPRINT="D8027DCFBDAF61FB44D5FDCE9B5F34077FA4288A"
+
+for FLAVOUR in production staging; do
+    start_lp_mock "$FLAVOUR"
+    export LAUNCHPAD_API="$LP_MOCK_API"
+    export LAUNCHPAD_URL="$LP_MOCK_WEB"
+
+    RET=$(get-private-ppa ppa:oem-solutions-group/ppa)
+
+    if [ "$(echo "$RET" | awk '{print $1}')" != "oem-solutions-group-ubuntu-ppa" ]; then
+        echo "ERR: get-private-ppa ppa:oem-solutions-group/ppa against the $FLAVOUR mock"
+        exit 1
+    fi
+
+    # ppa:oem-solutions-group/ppa is served as a private PPA, so the second
+    # field carries credentials and is deliberately not checked here.
+
+    if [ "$(echo "$RET" | awk '{print $3}')" != "$PRIVATE_FINGERPRINT" ]; then
+        echo "ERR: get-private-ppa ppa:oem-solutions-group/ppa against the $FLAVOUR mock"
+        exit 1
+    fi
+
+    # Just make sure the return code of the following command is OK.
+    get-private-ppa ppa:oem-solutions-group/ppa -g > /dev/null
+
+    # ppa:canonical-kernel-team/ppa is served as a public PPA so there are no
+    # credentials in the output.
+    EXPECTED="canonical-kernel-team-ubuntu-ppa http://ppa.launchpad.net/canonical-kernel-team/ppa/ubuntu $PUBLIC_FINGERPRINT"
+    if [ "$(get-private-ppa ppa:canonical-kernel-team/ppa)" != "$EXPECTED" ]; then
+        echo "ERR: get-private-ppa ppa:canonical-kernel-team/ppa against the $FLAVOUR mock"
+        exit 1
+    fi
+
+    # Just make sure the return code of the following command is OK.
+    get-private-ppa ppa:canonical-kernel-team/ppa -g > /dev/null
+done
+
+exit

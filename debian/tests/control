@@ -5,6 +5,16 @@ Tests:
  pkg-sutton-meta
 Depends: @, ubuntu-dev-tools, git-buildpackage
 
+# Offline counterparts of the Launchpad tests below. They drive the same code
+# paths against debian/tests/lp-mock-server, so they need neither credentials
+# nor network access.
+Tests:
+ get-private-ppa-mock,
+ git-url-insteadof-setting-mock,
+ lp-api-mock,
+ lp-dl-attm-mock
+Depends: @, python3
+
 Tests:
  bug-bind,
  get-private-ppa,
