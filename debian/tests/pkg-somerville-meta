@@ -50,7 +50,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-noble-ubuntu$" debian/gbp.conf
@@ -83,7 +83,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-noble-oem$" debian/gbp.conf
@@ -125,7 +125,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-noble-ubuntu$" debian/gbp.conf
@@ -158,7 +158,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-noble-oem$" debian/gbp.conf
@@ -200,7 +200,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-jammy-ubuntu$" debian/gbp.conf
@@ -233,7 +233,7 @@ grep "^  \* Dell XPS 13 7390\$" -B 1 -A 1 debian/control
 
 grep "Upstream-Name: oem-somerville-three-eyed-raven-meta" debian/copyright
 
-grep "alias pci:\*sv00001028sd00000962bc0Csc05\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
+grep "alias dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku0962:\* meta oem-somerville-three-eyed-raven-meta" debian/modaliases
 
 grep "^pristine-tar = False$" debian/gbp.conf
 grep "^debian-branch = three-eyed-raven-jammy-oem$" debian/gbp.conf

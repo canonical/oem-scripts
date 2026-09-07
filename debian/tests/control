@@ -5,11 +5,17 @@ Tests:
  pkg-sutton-meta
 Depends: @, ubuntu-dev-tools, git-buildpackage
 
+# Offline counterparts of the Launchpad tests further down. They drive the same
+# code paths against debian/tests/lp-mock-server, so they need neither
+# credentials nor network access, and they are what gates the package.
 Tests:
- bug-bind,
- get-private-ppa,
- lp-api,
- lp-bug,
+ get-private-ppa-mock,
+ git-url-insteadof-setting-mock,
+ lp-api-mock,
+ lp-dl-attm-mock
+Depends: @, python3
+
+Tests:
  review-merge-proposal,
  run-autopkgtest,
  setup-apt-dir
@@ -19,16 +25,31 @@ Tests: pkg-list
 Depends: @
 Restrictions: allow-stderr
 
+Tests: recovery-from-iso.sh
+Depends: @, openssh-client
+Restrictions: allow-stderr
+
+# Everything below drives the real Launchpad or the private OEM archive. It
+# needs credentials that only the CI credential setup installs, so each test
+# exits 77 when they are missing or the service is down; see
+# debian/tests/lp-online-guard.
+Tests:
+ bug-bind,
+ get-private-ppa,
+ lp-api,
+ lp-bug
+Depends: @
+Restrictions: skippable
+
 Tests:
  bootstrap-meta,
  mir-bug,
  oem-meta-packages
-Restrictions: skippable
 Depends: @, openssh-client
+Restrictions: skippable
 
 Tests:
  git-url-insteadof-setting,
- lp-dl-attm,
- recovery-from-iso.sh
+ lp-dl-attm
 Depends: @, openssh-client
-Restrictions: allow-stderr
+Restrictions: allow-stderr, skippable

@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_PRODUCTION"
+
 # Public
 lp-dl-attm 1
 find lp1

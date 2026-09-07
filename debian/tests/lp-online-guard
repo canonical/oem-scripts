@@ -1,0 +1,39 @@
+# shellcheck shell=sh
+# Sourced by the autopkgtests that talk to the real Launchpad.
+#
+# Those tests need credentials that only the CI credential setup installs, and
+# they go red whenever Launchpad itself is having a bad day.  They are marked
+# `Restrictions: skippable` in debian/tests/control, but skippable only has an
+# effect if the test exits 77, hence these guards.  The *-mock counterparts
+# cover the same code paths offline and are the ones that gate the package.
+
+# require_launchpad <service root> ...
+require_launchpad()
+{
+    if [ ! -f "$HOME/.config/oem-scripts/config.ini" ] && [ -z "${LAUNCHPAD_TOKEN:-}" ]; then
+        echo "SKIP: no Launchpad credentials are configured."
+        exit 77
+    fi
+
+    for root in "$@"; do
+        # lp-api prompts for a fresh OAuth token, and waits forever, when it
+        # cannot authenticate, so bound the probe.
+        if ! timeout 60 env LAUNCHPAD_API="$root" lp-api get people/+me > /dev/null 2>&1; then
+            echo "SKIP: $root is not usable with the configured credentials."
+            exit 77
+        fi
+    done
+}
+
+# require_private_archive
+require_private_archive()
+{
+    if ! grep -q '^archive = ' "$HOME/.config/oem-scripts/config.ini" 2>/dev/null; then
+        echo "SKIP: the [private] archive credentials are not configured."
+        exit 77
+    fi
+}
+
+# shellcheck disable=SC2034  # both are used by the scripts that source this.
+LAUNCHPAD_PRODUCTION="https://api.launchpad.net/"
+LAUNCHPAD_STAGING="https://api.staging.launchpad.net/"

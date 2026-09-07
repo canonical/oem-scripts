@@ -1,0 +1,94 @@
+#!/bin/bash
+# The offline counterpart of debian/tests/lp-api.  It exercises the same lp-api
+# code paths against debian/tests/lp-mock-server, so it needs neither Launchpad
+# credentials nor network access.
+
+exec 2>&1
+set -euo pipefail
+IFS=$'\n\t'
+
+TESTS_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=debian/tests/lp-mock-common
+. "$TESTS_DIR/lp-mock-common"
+
+trap lp_mock_cleanup EXIT INT TERM
+
+WORKDIR=$(mktemp -d)
+cd "$WORKDIR"
+
+# Any token will do; the mock does not check the OAuth signature.
+export LAUNCHPAD_TOKEN="mock-token:mock-secret:mock-consumer"
+
+start_lp_mock production
+export LAUNCHPAD_API="$LP_MOCK_API"
+export LAUNCHPAD_URL="$LP_MOCK_WEB"
+
+echo "=== Check the backward compatibility for launchpad-api and jq-lp ==="
+launchpad-api get people/+me | jq-lp -r .preferred_email_address_link
+
+echo "=== Check that a missing bug is reported as a failure ==="
+# LP: #2 doesn't exist so it should return failed.
+if lp-api get bugs/2 2>&1; then
+    echo "'lp-api get bugs/2' should have failed."
+    exit 1
+fi
+
+echo "=== Check lp-api download ==="
+BUILD=$(lp-api get ~ubuntu-cdimage/+livefs/ubuntu/noble/ubuntu | lp-api .completed_builds_collection_link | jq -r '.entries | .[0] | .self_link')
+# Pick the manifest instead of .[0] because the first file is a large initrd.
+URL=$(lp-api get "$BUILD" ws.op==getFileUrls | jq -r 'map(select(endswith(".manifest"))) | .[0]')
+lp-api download "$URL" 2>&1
+if [ -s "$(basename "$URL")" ]; then
+    ls -l "$(basename "$URL")"
+else
+    echo "'lp-api download $URL' failed."
+    exit 1
+fi
+
+echo "=== Check that every accepted URL form reaches the same resource ==="
+for FORM in "${LAUNCHPAD_API}/devel/bugs/1" "devel/bugs/1" "/devel/bugs/1" "/bugs/1" "bugs/1"; do
+    if [ "$(lp-api get "$FORM" | jq -r .date_created)" != "2004-08-20T00:00:00+00:00" ]; then
+        echo "'lp-api get $FORM' did not return bug #1."
+        exit 1
+    fi
+done
+
+echo "=== Check the production service root ==="
+if [ "$(lp-api get bugs/1 | jq -r .web_link)" != "https://bugs.launchpad.net/bugs/1" ]; then
+    echo "'lp-api get bugs/1' returned the wrong web_link for production."
+    exit 1
+fi
+
+start_lp_mock staging
+export LAUNCHPAD_API="$LP_MOCK_API"
+export LAUNCHPAD_URL="$LP_MOCK_WEB"
+
+echo "=== Check lp-api patch ==="
+lp-api patch bugs/100 tags:='["focal"]'
+if [ "$(lp-api get bugs/100 | jq -r '.tags|join(" ")')" != "focal" ]; then
+    echo "lp-api patch failed."
+    exit 1
+fi
+
+lp-api patch bugs/100 tags:='["lp-translations"]'
+if [ "$(lp-api get bugs/100 | jq -r '.tags|join(" ")')" != "lp-translations" ]; then
+    echo "lp-api patch failed."
+    exit 1
+fi
+
+echo "=== Check lp-api post ==="
+timestamp=$(date +%s)
+lp-api post bugs/100 ws.op=newMessage content="Hello World $timestamp"
+if [ "$(lp-api get bugs/100/messages | jq -r '.entries | .[-1].content')" != "Hello World $timestamp" ]; then
+    echo "lp-api post failed."
+    exit 1
+fi
+
+echo "=== Check the staging service root ==="
+export LAUNCHPAD_TOKEN="::"
+if [ "$(lp-api get bugs/1 | jq -r .web_link)" != "https://bugs.staging.launchpad.net/bugs/1" ]; then
+    echo "'lp-api get bugs/1' returned the wrong web_link for staging."
+    exit 1
+fi
+
+exit

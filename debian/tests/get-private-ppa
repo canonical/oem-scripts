@@ -4,6 +4,10 @@ exec 2>&1
 set -euo pipefail
 IFS=$'\n\t'
 
+# shellcheck source=debian/tests/lp-online-guard
+. "$(cd "$(dirname "$0")" && pwd)/lp-online-guard"
+require_launchpad "$LAUNCHPAD_PRODUCTION" "$LAUNCHPAD_STAGING"
+
 CONDITIONS=("" "https://api.launchpad.net/" "https://api.staging.launchpad.net/")
 
 for VALUE in "${CONDITIONS[@]}"; do
