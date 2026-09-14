@@ -6,7 +6,6 @@ get-private-ppa /usr/bin
 live-build-image-chroot.sh /usr/bin
 lp-api /usr/bin
 lp-dl-attm /usr/bin
-modinfo2json.py /usr/bin
 obj-*/bin/autoISO /usr/sbin
 oem-meta-package.mir.jinja2 /usr/share/oem-scripts
 oem-meta-package.sru.jinja2 /usr/share/oem-scripts
