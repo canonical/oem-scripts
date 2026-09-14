@@ -35,7 +35,6 @@ Depends:
  lsb-release,
  python3-distro-info,
  python3-distutils-extra,
- python3-jenkins,
  python3-jinja2,
  python3-pydantic,
  python3-requests,

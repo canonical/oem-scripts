@@ -1,46 +1,36 @@
 #!/usr/bin/env python3
-"""Trigger sanity test via GitHub Actions or Jenkins job
-Currently script supports both while in the middle of migration.
-After GitHub workflow is up, pipeline can use the same script but need to update the arguments.
+"""Trigger sanity test via GitHub Actions
 
-TODO: After Jenkins jobs are discontinued, the Jenkins related code can be removed
-
-GitHub Actions:
-
-./trigger_sanity_c3.py --use-github-actions \
+./trigger_sanity_c3.py \
   --github-owner canonical \
   --github-repo oem-enablement-ops \
-  --github-workflow provision-test-image.yml \
-  --github-branch develop-branch \
+  --github-workflow test-pc-image.yaml \
+  --github-branch main \
   --cid 202411-35996 --iso-url <url> --plan <plan>
 
-When multiple CIDs are provided, GitHub Actions is triggered once with CIDs joined by commas:
+When multiple CIDs are provided, the workflow is triggered once with the CIDs
+joined by commas:
 
-./trigger_sanity_c3.py --use-github-actions \
+./trigger_sanity_c3.py \
     --github-owner canonical \
     --github-repo oem-enablement-ops \
-    --github-workflow provision-test-image.yml \
-    --github-branch develop-branch \
+    --github-workflow test-pc-image.yaml \
+    --github-branch main \
     --cid 202411-35996 202411-35997 --iso-url <url> --plan <plan>
 
-Jenkins job::
-1. Trigger job on a specific CID:
+1. Trigger on a specific CID:
    - Specify the CID with --cid
    - Provide --iso-url to provision or --plan to test (or both)
 
-   Example:
-   ./trigger_sanity_c3.py --cid 202411-35996 --iso-url <url>
-   ./trigger_sanity_c3.py --cid 202411-35996 --plan <plan>
+2. Trigger on all compatible CIDs:
+   - Requires both --iso-url and --platform-info-dir, because it will search C3
+     for machines compatible with the ISO and kernel_meta in the platform dir
+   - (Optional) provide --plan to specify the test plan
 
-2. Trigger job on all compatible CIDs:
-   - Requires both --iso-url and --platform-info-dir, because it will search C3 for machines compatible with the ISO and kernel_meta in platform dir
-   - (Optional) provide --plan to specify the test plan, e.g pc-sanity-smoke-test-24-04
+Requires GITHUB_TOKEN in the environment.
 
-   Example:
-   ./trigger_sanity_c3.py --iso-url <url> --platform-info-dir <dir>
-   ./trigger_sanity_c3.py --iso-url <url> --platform-info-dir <dir> --plan <plan>
-
-Note: When other optional parameters are not provided, Jenkins job will use own defaults.
+Note: when optional parameters are not provided, the workflow uses its own
+defaults.
 """
 
 import subprocess
@@ -50,10 +40,9 @@ import sys
 import logging
 import argparse
 import configparser
-import jenkins
 from pathlib import Path
 import time
-from gh_actions_api import GitHubActionsAPI
+from oem_scripts.gh_actions_api import GitHubActionsAPI
 
 OEM_SCRIPTS_CONFIG = Path.home() / ".config" / "oem-scripts" / "config.ini"
 C3_V2_API_CLI = os.path.join(os.path.dirname(__file__), "c3-v2-api.py")
@@ -82,46 +71,6 @@ def read_config_value(config_file, key):
         return config["private"][key]
     except (KeyError, configparser.Error):
         return None
-
-
-def get_jenkins_connection():
-    # First try environment variables
-    jenkins_url = os.getenv("JENKINS_URL")
-    jenkins_user = os.getenv("JENKINS_USER")
-    jenkins_token = os.getenv("JENKINS_TOKEN")
-
-    # If any credentials are missing, try reading from config file
-    if not all([jenkins_url, jenkins_user, jenkins_token]):
-        if not jenkins_url:
-            jenkins_addr = read_config_value(OEM_SCRIPTS_CONFIG, "jenkins_addr")
-            if jenkins_addr:
-                jenkins_url = f"http://{jenkins_addr}"
-
-        if not jenkins_user:
-            jenkins_user = read_config_value(OEM_SCRIPTS_CONFIG, "jenkins_user")
-
-        if not jenkins_token:
-            jenkins_token = read_config_value(OEM_SCRIPTS_CONFIG, "jenkins_token")
-
-    if not all([jenkins_url, jenkins_user, jenkins_token]):
-        logger.error("Missing Jenkins credentials. Please either:")
-        logger.error(
-            "1. Set JENKINS_URL, JENKINS_USER, and JENKINS_TOKEN environment variables, or"
-        )
-        logger.error("2. Configure in ~/.config/oem-scripts/config.ini:")
-        logger.error("   [private]")
-        logger.error("   jenkins_addr = your.jenkins.server")
-        logger.error("   jenkins_user = your_username")
-        logger.error("   jenkins_token = your_api_token")
-        sys.exit(1)
-
-    try:
-        return jenkins.Jenkins(
-            jenkins_url, username=jenkins_user, password=jenkins_token, timeout=60
-        )
-    except Exception as e:
-        logger.error(f"Failed to connect to Jenkins: {e}")
-        sys.exit(1)
 
 
 def get_github_actions_connection(owner, repo):
@@ -418,45 +367,6 @@ def get_supported_cids(available_cids, iso_url, platform_info_dir):
     return supported_cids
 
 
-def trigger_job(server, job_name, parameters, dry_run=False):
-    """Trigger the Jenkins job with given parameters."""
-    MAX_ATTEMPTS = 20
-    SLEEP_TIME = 3
-    try:
-        if dry_run:
-            logger.info(f"[DRY RUN] Would trigger job: {job_name} with parameters:")
-            for key, value in parameters.items():
-                logger.info(f"  {key}: {value}")
-            return None
-        else:
-            # Keep the last build number before we trigger
-            last_build_number = server.get_job_info(job_name)["lastBuild"]["number"]
-            logger.debug(f"last_build_number: {last_build_number}")
-
-            # Trigger job and get new build number
-            server.build_job(job_name, parameters=parameters)
-            for attempt in range(MAX_ATTEMPTS):
-                current_build_number = server.get_job_info(job_name)["lastBuild"][
-                    "number"
-                ]
-                logger.debug(f"current_build_number: {current_build_number}")
-                if current_build_number > last_build_number:
-                    logger.info(
-                        f"Successfully triggered {job_name} build {current_build_number}"
-                    )
-                    return current_build_number
-                time.sleep(SLEEP_TIME)
-
-            # Build was not triggered
-            logger.error(
-                f"Failed to trigger {job_name} after build {last_build_number}"
-            )
-            return False
-    except Exception as e:
-        logger.error(f"Failed to trigger job {job_name}: {e}")
-        return False
-
-
 def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
     """Trigger GitHub Actions workflow with given parameters.
 
@@ -534,61 +444,6 @@ def trigger_github_action(api, workflow_id, branch, parameters, dry_run=False):
         return False
 
 
-def trigger_ci(
-    use_github,
-    github_api,
-    workflow_id,
-    branch,
-    jenkins_server,
-    job_name,
-    parameters,
-    dry_run,
-):
-    """Unified function to trigger either GitHub Actions or Jenkins.
-
-    Returns:
-        - For GitHub Actions: run_id (int) on success, False on failure, None for dry_run
-        - For Jenkins: build_number (int) on success, False on failure, None for dry_run
-    """
-    if use_github:
-        return trigger_github_action(
-            github_api, workflow_id, branch, parameters, dry_run
-        )
-    else:
-        return trigger_job(jenkins_server, job_name, parameters, dry_run)
-
-
-def verify_job_success(server, job_name, build_number, wait_timeout):
-    """Poll the Jenkins job status until it completes and return True if successful."""
-    SLEEP_TIME = 240
-    MAX_ATTEMPTS = int(wait_timeout / SLEEP_TIME + 1)
-    logger.debug(
-        f"Set timeout after {MAX_ATTEMPTS} tries. Sleep after try: {SLEEP_TIME} sec"
-    )
-
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            # Fetch job info
-            status = server.get_build_info(job_name, build_number).get("result")
-            if status is None:
-                logger.info(
-                    f"Build {build_number} is still running... Sleep {SLEEP_TIME} sec..."
-                )
-                time.sleep(SLEEP_TIME)
-            elif status == "SUCCESS":
-                logger.info(f"Build {build_number} completed successfully.")
-                return True
-            else:
-                logger.error(f"Build {build_number} failed with status: {status}")
-                return False
-        except Exception as e:
-            logger.error(f"Error fetching job info on attempt {attempt}: {e}")
-            time.sleep(SLEEP_TIME)
-
-    logger.error("Max attempts reached. Unable to verify job status.")
-    return False
-
-
 def verify_github_workflow_success(api, run_id, wait_timeout):
     """Poll the GitHub Actions workflow status until it completes and return True if successful.
 
@@ -634,7 +489,7 @@ def verify_github_workflow_success(api, run_id, wait_timeout):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Trigger infrastructure-checkbox-run job"
+        description="Trigger a sanity test workflow via GitHub Actions"
     )
     parser.add_argument(
         "--platform-info-dir",
@@ -644,17 +499,12 @@ def parse_arguments():
         "--iso-url", help="URL to ISO file (required when --cid is not provided)"
     )
     parser.add_argument(
-        "--iso-sha", help="sha256sum of the ISO file, passed to Jenkins as IMAGE_SHA"
+        "--iso-sha", help="sha256sum of the ISO file, passed as IMAGE_SHA"
     )
     parser.add_argument(
         "--cid",
         nargs="+",
         help="Specific CID to trigger the job on. If not provided, we search C3 for all compatible machines",
-    )
-    parser.add_argument(
-        "--job-name",
-        default="infrastructure-checkbox-run",
-        help="Jenkins job name (default: infrastructure-checkbox-run)",
     )
     parser.add_argument(
         "--plan",
@@ -695,7 +545,7 @@ def parse_arguments():
         help="Put 'dell' or 'hp' embargo config on DUT after provisioning",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Run without triggering Jenkins jobs"
+        "--dry-run", action="store_true", help="Run without triggering the workflow"
     )
     parser.add_argument(
         "--wait-success",
@@ -712,38 +562,23 @@ def parse_arguments():
     parser.add_argument(
         "--use-github-actions",
         action="store_true",
-        help="Use GitHub Actions instead of Jenkins (requires GITHUB_TOKEN env var)",
+        help=argparse.SUPPRESS,  # deprecated no-op: GitHub Actions is the only backend
+    )
+    parser.add_argument("--github-owner", required=True, help="GitHub repository owner")
+    parser.add_argument("--github-repo", required=True, help="GitHub repository name")
+    parser.add_argument(
+        "--github-workflow", required=True, help="GitHub Actions workflow file name"
     )
     parser.add_argument(
-        "--github-owner",
-        help="GitHub repository owner (required with --use-github-actions)",
-    )
-    parser.add_argument(
-        "--github-repo",
-        help="GitHub repository name (required with --use-github-actions)",
-    )
-    parser.add_argument(
-        "--github-workflow",
-        help="GitHub Actions workflow file name (required with --use-github-actions)",
-    )
-    parser.add_argument(
-        "--github-branch",
-        help="Git branch to run GitHub Actions workflow on (required with --use-github-actions)",
+        "--github-branch", required=True, help="Git branch to run the workflow on"
     )
     args = parser.parse_args()
 
-    # Validate GitHub Actions specific arguments
     if args.use_github_actions:
-        if (
-            not args.github_owner
-            or not args.github_repo
-            or not args.github_workflow
-            or not args.github_branch
-        ):
-            parser.error(
-                "When using --use-github-actions, you must provide: "
-                "--github-owner, --github-repo, --github-workflow, and --github-branch"
-            )
+        logger.warning(
+            "--use-github-actions is deprecated and ignored; "
+            "GitHub Actions is the only supported backend."
+        )
 
     # Validate arguments
     if not args.cid:
@@ -769,7 +604,6 @@ def main():
     logging.basicConfig(
         level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
-    job_name = args.job_name
     parameters = {}
 
     if args.iso_url:
@@ -778,7 +612,7 @@ def main():
         parameters["PLAN"] = args.plan
 
     # Add optional parameters only if they were passed
-    # If not passed, Jenkins job will use it's default values
+    # If not passed, the workflow uses its own default values
     if args.exclude_task:
         parameters["EXCLUDE_TASK"] = args.exclude_task
 
@@ -811,15 +645,8 @@ def main():
     if args.iso_sha:
         parameters["IMAGE_SHA"] = args.iso_sha
 
-    # Initialize connection based on mode
-    if args.use_github_actions:
-        github_api = get_github_actions_connection(args.github_owner, args.github_repo)
-        workflow_id = args.github_workflow
-        jenkins_server = None
-    else:
-        jenkins_server = get_jenkins_connection()
-        github_api = None
-        workflow_id = None
+    github_api = get_github_actions_connection(args.github_owner, args.github_repo)
+    workflow_id = args.github_workflow
 
     # only run on CIDs in Lab10
     if len(args.cid) == 1:
@@ -836,43 +663,23 @@ def main():
             sys.exit(1)
         parameters["CID"] = cid
 
-        result = trigger_ci(
-            args.use_github_actions,
-            github_api,
-            workflow_id,
-            args.github_branch,
-            jenkins_server,
-            job_name,
-            parameters,
-            args.dry_run,
+        result = trigger_github_action(
+            github_api, workflow_id, args.github_branch, parameters, args.dry_run
         )
 
         if not result:
-            logger.error(
-                f"Failed to trigger {'workflow' if args.use_github_actions else 'job'}"
-            )
+            logger.error("Failed to trigger workflow")
             sys.exit(1)
 
         # Wait for success if requested
         if not args.dry_run and args.wait_success and result:
-            if args.use_github_actions:
-                # result is run_id for GitHub Actions
-                if not verify_github_workflow_success(
-                    github_api, result, args.wait_timeout
-                ):
-                    logger.error(
-                        f"Triggered workflow was not successful: {workflow_id}"
-                    )
-                    sys.exit(1)
-                logger.info(f"Workflow completed successfully: {workflow_id}")
-            else:
-                # result is build_number for Jenkins
-                if not verify_job_success(
-                    jenkins_server, job_name, result, args.wait_timeout
-                ):
-                    logger.error(f"Triggered job was not successful: {job_name}")
-                    sys.exit(1)
-                logger.info(f"Job completed successfully: {job_name}")
+            # result is the run_id
+            if not verify_github_workflow_success(
+                github_api, result, args.wait_timeout
+            ):
+                logger.error(f"Triggered workflow was not successful: {workflow_id}")
+                sys.exit(1)
+            logger.info(f"Workflow completed successfully: {workflow_id}")
             return True
     elif len(args.cid) > 1:
         # Multiple CIDs are provided, used with selected list of CIDs
@@ -906,35 +713,12 @@ def main():
             logger.error("No valid CIDs available to trigger")
             sys.exit(1)
 
-        if args.use_github_actions:
-            parameters["CID"] = ",".join(selected_cids)
-            if not trigger_ci(
-                args.use_github_actions,
-                github_api,
-                workflow_id,
-                args.github_branch,
-                jenkins_server,
-                job_name,
-                parameters,
-                args.dry_run,
-            ):
-                logger.error(f"Failed to trigger workflow for CIDs: {selected_cids}")
-                sys.exit(1)
-        else:
-            for cid in selected_cids:
-                parameters["CID"] = cid
-                if not trigger_ci(
-                    args.use_github_actions,
-                    github_api,
-                    workflow_id,
-                    args.github_branch,
-                    jenkins_server,
-                    job_name,
-                    parameters,
-                    args.dry_run,
-                ):
-                    logger.error(f"Failed to trigger for CID: {cid}")
-                    continue
+        parameters["CID"] = ",".join(selected_cids)
+        if not trigger_github_action(
+            github_api, workflow_id, args.github_branch, parameters, args.dry_run
+        ):
+            logger.error(f"Failed to trigger workflow for CIDs: {selected_cids}")
+            sys.exit(1)
     else:
         # No CID is provided, get all CIDs which are online in Lab10 (IoT and PC)
         available_cids = get_linked_labresources()
@@ -950,33 +734,11 @@ def main():
             logger.error("No supported CIDs found for the given ISO file")
             sys.exit(1)
 
-        if args.use_github_actions:
-            parameters["CID"] = ",".join(supported_cids)
-            if not trigger_ci(
-                args.use_github_actions,
-                github_api,
-                workflow_id,
-                args.github_branch,
-                jenkins_server,
-                job_name,
-                parameters,
-                args.dry_run,
-            ):
-                logger.error(f"Failed to trigger workflow for CIDs: {supported_cids}")
-        else:
-            for cid in supported_cids:
-                parameters["CID"] = cid
-                if not trigger_ci(
-                    args.use_github_actions,
-                    github_api,
-                    workflow_id,
-                    args.github_branch,
-                    jenkins_server,
-                    job_name,
-                    parameters,
-                    args.dry_run,
-                ):
-                    logger.error(f"Failed to trigger for CID: {cid}")
+        parameters["CID"] = ",".join(supported_cids)
+        if not trigger_github_action(
+            github_api, workflow_id, args.github_branch, parameters, args.dry_run
+        ):
+            logger.error(f"Failed to trigger workflow for CIDs: {supported_cids}")
 
 
 if __name__ == "__main__":
