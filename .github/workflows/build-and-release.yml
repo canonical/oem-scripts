@@ -1,0 +1,332 @@
+name: Build and release oem-scripts
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags:
+      - '[0-9]*'
+
+jobs:
+  validate:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install validation dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
+            qemu-system-x86 qemu-utils
+
+      - name: Validate release metadata
+        id: metadata
+        env:
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          set -euo pipefail
+          VERSION=$(dpkg-parsechangelog --show-field Version)
+          DISTRIBUTION=$(dpkg-parsechangelog --show-field Distribution)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$IS_TAG" != true ]; then
+            exit 0
+          fi
+
+          if [ "$GITHUB_REF_NAME" != "$VERSION" ] || [ "$DISTRIBUTION" != resolute ]; then
+            printf 'Tag %s must match changelog version %s for resolute; distribution is %s.\n' \
+              "$GITHUB_REF_NAME" "$VERSION" "$DISTRIBUTION" >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            printf 'Release tag %s must point to a commit reachable from master.\n' \
+              "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Enable KVM access
+        run: |
+          set -euo pipefail
+          if [ ! -c /dev/kvm ]; then
+            echo 'Error: this runner does not expose /dev/kvm' >&2
+            exit 1
+          fi
+          sudo setfacl --modify "u:$(id --user):rw" /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
+      - name: Install package build dependencies
+        run: |
+          set -euo pipefail
+          sudo mk-build-deps --install --remove \
+            --tool 'apt-get --yes --no-install-recommends' debian/control
+
+      - name: Run isolated autopkgtests
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/autopkgtest-home" "$RUNNER_TEMP/autopkgtest-artifacts"
+          set +e
+          HOME="$RUNNER_TEMP/autopkgtest-home" ./run-autopkgtest qemu resolute
+          status=$?
+          set -e
+
+          find . -maxdepth 1 \( \
+            -name 'autopkgtest-build-qemu-*-resolute-summary.log' -o \
+            -name 'autopkgtest-build-qemu-*-resolute-complete.log' -o \
+            -name 'autopkgtest-build-qemu-*-resolute' \
+          \) -exec cp -a -- {} "$RUNNER_TEMP/autopkgtest-artifacts/" \;
+
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            exit "$status"
+          fi
+
+      - name: Upload autopkgtest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopkgtest-${{ github.sha }}
+          path: ${{ runner.temp }}/autopkgtest-artifacts
+          if-no-files-found: warn
+
+      - name: Build Debian artifacts
+        run: |
+          set -euo pipefail
+          VERSION=$(dpkg-parsechangelog --show-field Version)
+          BUILD_PARENT="$RUNNER_TEMP/debian-build"
+          BUILD_SOURCE="$BUILD_PARENT/source"
+          ARTIFACT_DIR="$RUNNER_TEMP/debian-artifacts"
+          rm -rf "$BUILD_PARENT" "$ARTIFACT_DIR"
+          mkdir -p "$BUILD_PARENT" "$ARTIFACT_DIR"
+          cp -a "$GITHUB_WORKSPACE" "$BUILD_SOURCE"
+
+          (
+            cd "$BUILD_SOURCE"
+            dpkg-buildpackage -us -uc -tc
+            dpkg-buildpackage -S -us -uc
+          )
+
+          find "$BUILD_PARENT" -maxdepth 1 -type f \( \
+            -name "oem-scripts_${VERSION}_*" -o \
+            -name "oem-scripts-dbgsym_${VERSION}_*" \
+          \) -exec cp -- {} "$ARTIFACT_DIR/" \;
+
+          shopt -s nullglob
+          source_changes=("$ARTIFACT_DIR/oem-scripts_${VERSION}_source.changes")
+          source_dsc=("$ARTIFACT_DIR/oem-scripts_${VERSION}.dsc")
+          source_tar=("$ARTIFACT_DIR/oem-scripts_${VERSION}".tar.*)
+          binary_debs=("$ARTIFACT_DIR/oem-scripts_${VERSION}_"*.deb \
+                       "$ARTIFACT_DIR/oem-scripts-dbgsym_${VERSION}_"*.deb)
+          [ "${#source_changes[@]}" -eq 1 ]
+          [ "${#source_dsc[@]}" -eq 1 ]
+          [ "${#source_tar[@]}" -eq 1 ]
+          [ "${#binary_debs[@]}" -ge 1 ]
+
+      - name: Upload Debian artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package-${{ github.sha }}
+          path: ${{ runner.temp }}/debian-artifacts
+          if-no-files-found: error
+
+  publish-and-promote:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: validate
+    runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
+    timeout-minutes: 360
+    concurrency:
+      group: oem-scripts-ppa-release
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Debian artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: debian-package-${{ github.sha }}
+          path: release-artifacts
+
+      - name: Install release dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            devscripts distro-info dpkg-dev dput gnupg httpie jq lsb-release
+
+      - name: Fetch release credentials from Vault
+        id: vault
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          method: jwt
+          role: github-oem
+          secrets: |
+            secrets/data/lp-api/oem-taipei-bot oauth_token | LP_OAUTH_TOKEN;
+            secrets/data/lp-api/oem-taipei-bot oauth_token_secret | LP_OAUTH_TOKEN_SECRET;
+            secrets/data/lp-api/oem-taipei-bot oauth_consumer_key | LP_OAUTH_CONSUMER_KEY;
+            secrets/data/gpg private_key | GPG_PRIVATE_KEY;
+
+      - name: Sign source upload
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          GPG_PRIVATE_KEY: ${{ steps.vault.outputs.GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          install -d -m 700 "$GNUPGHOME"
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          mapfile -t fingerprints < <(
+            gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "sec" { print $5 }'
+          )
+          if [ "${#fingerprints[@]}" -ne 1 ]; then
+            echo 'Expected exactly one primary secret-key fingerprint.' >&2
+            exit 1
+          fi
+          debsign --re-sign -k"${fingerprints[0]}" \
+            "release-artifacts/oem-scripts_${VERSION}_source.changes"
+
+      - name: Publish and promote package
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          LAUNCHPAD_TOKEN: ${{ steps.vault.outputs.LP_OAUTH_TOKEN }}:${{ steps.vault.outputs.LP_OAUTH_TOKEN_SECRET }}:${{ steps.vault.outputs.LP_OAUTH_CONSUMER_KEY }}
+        run: |
+          set -euo pipefail
+          ARCHIVE='~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
+          FROM_ARCHIVE='https://api.launchpad.net/devel/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
+          SOURCE_NAME='oem-scripts'
+          MAX_ATTEMPTS=90
+          POLL_SECONDS=60
+
+          source_entries() {
+            local series=$1
+            local status=${2:-}
+            local args=(
+              ws.op==getPublishedSources
+              "source_name==$SOURCE_NAME"
+              "distro_series==https://api.launchpad.net/devel/ubuntu/$series"
+              exact_match==true
+              order_by_date==true
+            )
+            if [ -n "$status" ]; then
+              args+=("status==$status")
+            fi
+            ./lp-api get "$ARCHIVE" "${args[@]}"
+          }
+
+          binary_entries() {
+            local series=$1
+            ./lp-api get "$ARCHIVE" \
+              ws.op==getPublishedBinaries \
+              "distro_arch_series==https://api.launchpad.net/devel/ubuntu/$series/amd64" \
+              "binary_name==$SOURCE_NAME" \
+              pocket==Release status==Published exact_match==true order_by_date==true
+          }
+
+          has_exact_version() {
+            jq -e --arg version "$VERSION" \
+              '.entries[]? | select(.source_package_version == $version)' >/dev/null
+          }
+
+          has_exact_binary() {
+            jq -e --arg version "$VERSION" \
+              '.entries[]? | select(.binary_package_version == $version)' >/dev/null
+          }
+
+          fail_if_newer_published() {
+            local entries=$1
+            local series=$2
+            local published_version
+            while IFS= read -r published_version; do
+              if dpkg --compare-versions "$published_version" gt "$VERSION"; then
+                printf 'PPA already has newer %s version %s in %s.\n' \
+                  "$SOURCE_NAME" "$published_version" "$series" >&2
+                return 1
+              fi
+            done < <(jq -r '.entries[]?.source_package_version // empty' <<<"$entries")
+          }
+
+          wait_for_binary() {
+            local series=$1
+            local entries
+            for _ in $(seq 1 "$MAX_ATTEMPTS"); do
+              entries=$(binary_entries "$series")
+              if has_exact_binary <<<"$entries"; then
+                printf '%s %s: Published\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+                return 0
+              fi
+              sleep "$POLL_SECONDS"
+            done
+            printf 'Timed out waiting for %s %s in %s: https://launchpad.net/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools\n' \
+              "$SOURCE_NAME" "$VERSION" "$series" >&2
+            return 1
+          }
+
+          source_pending=$(source_entries resolute Pending)
+          source_published=$(source_entries resolute Published)
+          source_all=$(source_entries resolute)
+          if has_exact_version <<<"$source_pending" || has_exact_version <<<"$source_published"; then
+            printf 'resolute %s: existing upload\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          elif has_exact_version <<<"$source_all"; then
+            echo "Source version $VERSION exists in a terminal Launchpad state." >&2
+            exit 1
+          else
+            fail_if_newer_published "$source_published" resolute
+            dput ppa:oem-solutions-engineers/pc-enablement-tools \
+              "release-artifacts/oem-scripts_${VERSION}_source.changes"
+            printf 'resolute %s: upload requested\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          wait_for_binary resolute
+
+          for series in noble jammy focal; do
+            target_pending=$(source_entries "$series" Pending)
+            target_published=$(source_entries "$series" Published)
+            target_all=$(source_entries "$series")
+            target_binaries=$(binary_entries "$series")
+
+            if has_exact_binary <<<"$target_binaries"; then
+              printf '%s %s: already Published\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            fail_if_newer_published "$target_published" "$series"
+
+            if has_exact_version <<<"$target_pending" || has_exact_version <<<"$target_published"; then
+              printf '%s %s: existing copy\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+            elif has_exact_version <<<"$target_all"; then
+              echo "Target version $VERSION exists in a terminal Launchpad state for $series." >&2
+              exit 1
+            else
+              ./lp-api post "$ARCHIVE" \
+                ws.op=copyPackage \
+                "source_name=$SOURCE_NAME" \
+                "version=$VERSION" \
+                "from_archive=$FROM_ARCHIVE" \
+                to_pocket=Release \
+                "to_series=$series"
+              printf '%s %s: copy requested\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            wait_for_binary "$series"
+          done
+
+      - name: Remove temporary signing keyring
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/gnupg"
