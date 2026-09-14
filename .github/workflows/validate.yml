@@ -19,13 +19,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install validation dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-            acl autopkgtest cloud-image-utils distro-info qemu-system-x86 qemu-utils
+            acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
+            qemu-system-x86 qemu-utils
+          sudo mk-build-deps --install --remove \
+            --tool 'apt-get --yes --no-install-recommends' debian/control
 
       - name: Enable KVM access
         run: |
@@ -49,4 +54,41 @@ jobs:
 
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
             exit "$status"
+          fi
+
+      - name: Upload autopkgtest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopkgtest-${{ github.sha }}
+          path: |
+            autopkgtest-build-qemu-*-resolute-summary.log
+            autopkgtest-build-qemu-*-resolute-complete.log
+            autopkgtest-build-qemu-*-resolute
+          if-no-files-found: warn
+
+      - name: Build Debian artifacts
+        run: |
+          set -euo pipefail
+          BUILD_PARENT="$RUNNER_TEMP/debian-build"
+          BUILD_SOURCE="$BUILD_PARENT/source"
+          rm -rf "$BUILD_PARENT"
+          mkdir -p "$BUILD_SOURCE"
+          git archive --format=tar "$GITHUB_SHA" |
+            tar --extract --directory "$BUILD_SOURCE"
+
+          (
+            cd "$BUILD_SOURCE"
+            dpkg-buildpackage -us -uc -tc
+            dpkg-buildpackage -S -us -uc
+          )
+
+          VERSION=$(dpkg-parsechangelog --show-field Version)
+          shopt -s nullglob
+          source_tar=("$BUILD_PARENT/oem-scripts_${VERSION}".tar.*)
+          [ "${#source_tar[@]}" -eq 1 ]
+          tar --list --file "${source_tar[0]}" > "$RUNNER_TEMP/source-tar-contents"
+          if grep -F 'autopkgtest-build-qemu-' "$RUNNER_TEMP/source-tar-contents"; then
+            echo 'Generated autopkgtest output was included in the source package.' >&2
+            exit 1
           fi

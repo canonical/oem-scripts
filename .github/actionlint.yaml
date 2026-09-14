@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - oem-enablement
+    - amd64
+    - noble
+    - medium

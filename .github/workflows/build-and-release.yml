@@ -6,8 +6,8 @@ on:
       - '[0-9]+.[0-9]+'
 
 jobs:
-  build_release_artifacts:
-    name: Build release artifacts
+  validate:
+    name: Validate and build release artifacts
     runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
     permissions:
       contents: read
@@ -44,9 +44,45 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-            devscripts distro-info dpkg-dev equivs
+            acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
+            qemu-system-x86 qemu-utils
           sudo mk-build-deps --install --remove \
             --tool 'apt-get --yes --no-install-recommends' debian/control
+
+      - name: Enable KVM access
+        run: |
+          set -euo pipefail
+          if [ ! -c /dev/kvm ]; then
+            echo 'Error: this runner does not expose /dev/kvm' >&2
+            exit 1
+          fi
+          sudo setfacl --modify "u:$(id --user):rw" /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
+      - name: Run isolated autopkgtests
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/autopkgtest-home"
+          set +e
+          HOME="$RUNNER_TEMP/autopkgtest-home" ./run-autopkgtest qemu resolute
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            exit "$status"
+          fi
+
+      - name: Upload autopkgtest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopkgtest-${{ github.sha }}
+          path: |
+            autopkgtest-build-qemu-*-resolute-summary.log
+            autopkgtest-build-qemu-*-resolute-complete.log
+            autopkgtest-build-qemu-*-resolute
+          if-no-files-found: warn
 
       - name: Build Debian artifacts
         run: |
@@ -56,8 +92,9 @@ jobs:
           BUILD_SOURCE="$BUILD_PARENT/source"
           ARTIFACT_DIR="$RUNNER_TEMP/debian-artifacts"
           rm -rf "$BUILD_PARENT" "$ARTIFACT_DIR"
-          mkdir -p "$BUILD_PARENT" "$ARTIFACT_DIR"
-          cp -a "$GITHUB_WORKSPACE" "$BUILD_SOURCE"
+          mkdir -p "$BUILD_SOURCE" "$ARTIFACT_DIR"
+          git archive --format=tar "$GITHUB_SHA" |
+            tar --extract --directory "$BUILD_SOURCE"
 
           (
             cd "$BUILD_SOURCE"
@@ -67,7 +104,9 @@ jobs:
 
           find "$BUILD_PARENT" -maxdepth 1 -type f \( \
             -name "oem-scripts_${VERSION}_*" -o \
-            -name "oem-scripts-dbgsym_${VERSION}_*" \
+            -name "oem-scripts-dbgsym_${VERSION}_*" -o \
+            -name "oem-scripts_${VERSION}.dsc" -o \
+            -name "oem-scripts_${VERSION}.tar.*" \
           \) -exec cp -- {} "$ARTIFACT_DIR/" \;
 
           shopt -s nullglob
@@ -80,6 +119,11 @@ jobs:
           [ "${#source_dsc[@]}" -eq 1 ]
           [ "${#source_tar[@]}" -eq 1 ]
           [ "${#binary_debs[@]}" -ge 1 ]
+          tar --list --file "${source_tar[0]}" > "$RUNNER_TEMP/source-tar-contents"
+          if grep -F 'autopkgtest-build-qemu-' "$RUNNER_TEMP/source-tar-contents"; then
+            echo 'Generated autopkgtest output was included in the source package.' >&2
+            exit 1
+          fi
 
       - name: Upload Debian artifacts
         uses: actions/upload-artifact@v4
@@ -88,7 +132,7 @@ jobs:
           path: ${{ runner.temp }}/debian-artifacts
           if-no-files-found: error
   publish-and-promote:
-    needs: build_release_artifacts
+    needs: validate
     runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
     timeout-minutes: 360
     concurrency:
@@ -121,6 +165,7 @@ jobs:
           url: ${{ secrets.VAULT_ADDR }}
           method: jwt
           role: github-oem
+          exportEnv: false
           secrets: |
             secrets/data/lp-api/oem-taipei-bot oauth_token | LP_OAUTH_TOKEN;
             secrets/data/lp-api/oem-taipei-bot oauth_token_secret | LP_OAUTH_TOKEN_SECRET;
@@ -129,7 +174,7 @@ jobs:
 
       - name: Sign source upload
         env:
-          VERSION: ${{ needs.build_release_artifacts.outputs.version }}
+          VERSION: ${{ needs.validate.outputs.version }}
           GPG_PRIVATE_KEY: ${{ steps.vault.outputs.GPG_PRIVATE_KEY }}
         run: |
           set -euo pipefail
@@ -137,7 +182,9 @@ jobs:
           install -d -m 700 "$GNUPGHOME"
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
           mapfile -t fingerprints < <(
-            gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "sec" { print $5 }'
+            gpg --batch --with-colons --fingerprint --list-secret-keys |
+              awk -F: '$1 == "sec" { primary = 1; next }
+                        primary && $1 == "fpr" { print $10; primary = 0 }'
           )
           if [ "${#fingerprints[@]}" -ne 1 ]; then
             echo 'Expected exactly one primary secret-key fingerprint.' >&2
@@ -148,10 +195,11 @@ jobs:
 
       - name: Publish and promote package
         env:
-          VERSION: ${{ needs.build_release_artifacts.outputs.version }}
+          VERSION: ${{ needs.validate.outputs.version }}
           LAUNCHPAD_TOKEN: ${{ steps.vault.outputs.LP_OAUTH_TOKEN }}:${{ steps.vault.outputs.LP_OAUTH_TOKEN_SECRET }}:${{ steps.vault.outputs.LP_OAUTH_CONSUMER_KEY }}
         run: |
           set -euo pipefail
+          VERSION=${VERSION:?}
           ARCHIVE='~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
           FROM_ARCHIVE='https://api.launchpad.net/devel/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
           SOURCE_NAME='oem-scripts'
@@ -161,26 +209,45 @@ jobs:
           source_entries() {
             local series=$1
             local status=${2:-}
+            local response
             local args=(
               ws.op==getPublishedSources
               "source_name==$SOURCE_NAME"
               "distro_series==https://api.launchpad.net/devel/ubuntu/$series"
+              "version==$VERSION"
               exact_match==true
               order_by_date==true
             )
             if [ -n "$status" ]; then
               args+=("status==$status")
             fi
-            ./lp-api get "$ARCHIVE" "${args[@]}"
+            response=$(./lp-api get "$ARCHIVE" "${args[@]}")
+            if ! jq -e '.entries | type == "array"' <<<"$response" >/dev/null; then
+              echo "Launchpad returned an invalid source response for $series." >&2
+              return 1
+            fi
+            printf '%s\n' "$response"
           }
 
           binary_entries() {
             local series=$1
-            ./lp-api get "$ARCHIVE" \
-              ws.op==getPublishedBinaries \
-              "distro_arch_series==https://api.launchpad.net/devel/ubuntu/$series/amd64" \
-              "binary_name==$SOURCE_NAME" \
-              pocket==Release status==Published exact_match==true order_by_date==true
+            local response
+            local args=(
+              ws.op==getPublishedBinaries
+              "distro_arch_series==https://api.launchpad.net/devel/ubuntu/$series/amd64"
+              "binary_name==$SOURCE_NAME"
+              "version==$VERSION"
+              pocket==Release
+              status==Published
+              exact_match==true
+              order_by_date==true
+            )
+            response=$(./lp-api get "$ARCHIVE" "${args[@]}")
+            if ! jq -e '.entries | type == "array"' <<<"$response" >/dev/null; then
+              echo "Launchpad returned an invalid binary response for $series." >&2
+              return 1
+            fi
+            printf '%s\n' "$response"
           }
 
           has_exact_version() {
@@ -191,19 +258,6 @@ jobs:
           has_exact_binary() {
             jq -e --arg version "$VERSION" \
               '.entries[]? | select(.binary_package_version == $version)' >/dev/null
-          }
-
-          fail_if_newer_published() {
-            local entries=$1
-            local series=$2
-            local published_version
-            while IFS= read -r published_version; do
-              if dpkg --compare-versions "$published_version" gt "$VERSION"; then
-                printf 'PPA already has newer %s version %s in %s.\n' \
-                  "$SOURCE_NAME" "$published_version" "$series" >&2
-                return 1
-              fi
-            done < <(jq -r '.entries[]?.source_package_version // empty' <<<"$entries")
           }
 
           wait_for_binary() {
@@ -231,7 +285,6 @@ jobs:
             echo "Source version $VERSION exists in a terminal Launchpad state." >&2
             exit 1
           else
-            fail_if_newer_published "$source_published" resolute
             dput ppa:oem-solutions-engineers/pc-enablement-tools \
               "release-artifacts/oem-scripts_${VERSION}_source.changes"
             printf 'resolute %s: upload requested\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
@@ -248,7 +301,6 @@ jobs:
               printf '%s %s: already Published\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
               continue
             fi
-            fail_if_newer_published "$target_published" "$series"
 
             if has_exact_version <<<"$target_pending" || has_exact_version <<<"$target_published"; then
               printf '%s %s: existing copy\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
