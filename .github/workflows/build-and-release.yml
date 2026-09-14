@@ -3,7 +3,7 @@ name: Build and release oem-scripts
 on:
   push:
     tags:
-      - '[0-9]*'
+      - '[0-9]+\.[0-9]+'
 
 jobs:
   build_release_artifacts:
