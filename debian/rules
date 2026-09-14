@@ -1,21 +1,12 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-export DH_GOPKG:=launchpad.net/pc-enablement/oem-scripts
 export PYBUILD_NAME=oem-scripts
 
 %:
-	dh $@ --with golang --buildsystem=golang
 	dh $@ --with python3 --buildsystem=pybuild
 
 override_dh_auto_test:
-ifeq "$(DH_INTERNAL_OPTIONS)" "-O--buildsystem=golang"
-	dh_auto_test
-else
 	./tests/test_black
 	./tests/test_flake8
 	./tests/test_shellcheck
-endif
-
-override_dh_dwz:
-	# Can error with "dwz: debian/oem-scripts/usr/sbin/autoISO: Found compressed .debug_aranges section, not attempting dwz compression"

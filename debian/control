@@ -4,10 +4,8 @@ Priority: optional
 Build-Depends:
  black,
  debhelper-compat (= 12),
- dh-golang,
  dh-python,
  flake8,
- golang-go,
  python3-all,
  python3-debian,
  python3-launchpadlib,
@@ -29,7 +27,6 @@ Depends:
  dh-modaliases,
  diffutils,
  distro-info,
- dkms,
  dpkg-dev,
  git,
  git-buildpackage,
@@ -40,7 +37,6 @@ Depends:
  python3-distutils-extra,
  python3-jenkins,
  python3-jinja2,
- python3-mechanize,
  python3-pydantic,
  python3-requests,
  python3-yaml,
@@ -51,10 +47,7 @@ Breaks: lp-fish-tools (<<1.192.40)
 Replaces: lp-fish-tools (<<1.192.40)
 Recommends:
  colordiff,
- python3-jira,
- qemu-user-static,
- rclone,
- zsync-curl
+ python3-jira
 Suggests:
  autopkgtest,
  lxc,
