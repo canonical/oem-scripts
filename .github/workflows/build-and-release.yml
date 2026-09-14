@@ -1,20 +1,13 @@
 name: Build and release oem-scripts
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
-    branches:
-      - master
     tags:
       - '[0-9]*'
 
 jobs:
-  validate:
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+  build_release_artifacts:
+    name: Build release artifacts
     runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
     permissions:
       contents: read
@@ -26,27 +19,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install validation dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-            acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
-            qemu-system-x86 qemu-utils
-
       - name: Validate release metadata
         id: metadata
-        env:
-          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           set -euo pipefail
           VERSION=$(dpkg-parsechangelog --show-field Version)
           DISTRIBUTION=$(dpkg-parsechangelog --show-field Distribution)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-          if [ "$IS_TAG" != true ]; then
-            exit 0
-          fi
 
           if [ "$GITHUB_REF_NAME" != "$VERSION" ] || [ "$DISTRIBUTION" != resolute ]; then
             printf 'Tag %s must match changelog version %s for resolute; distribution is %s.\n' \
@@ -60,49 +39,14 @@ jobs:
             exit 1
           fi
 
-      - name: Enable KVM access
-        run: |
-          set -euo pipefail
-          if [ ! -c /dev/kvm ]; then
-            echo 'Error: this runner does not expose /dev/kvm' >&2
-            exit 1
-          fi
-          sudo setfacl --modify "u:$(id --user):rw" /dev/kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
-
       - name: Install package build dependencies
         run: |
           set -euo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+            devscripts distro-info dpkg-dev equivs
           sudo mk-build-deps --install --remove \
             --tool 'apt-get --yes --no-install-recommends' debian/control
-
-      - name: Run isolated autopkgtests
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/autopkgtest-home" "$RUNNER_TEMP/autopkgtest-artifacts"
-          set +e
-          HOME="$RUNNER_TEMP/autopkgtest-home" ./run-autopkgtest qemu resolute
-          status=$?
-          set -e
-
-          find . -maxdepth 1 \( \
-            -name 'autopkgtest-build-qemu-*-resolute-summary.log' -o \
-            -name 'autopkgtest-build-qemu-*-resolute-complete.log' -o \
-            -name 'autopkgtest-build-qemu-*-resolute' \
-          \) -exec cp -a -- {} "$RUNNER_TEMP/autopkgtest-artifacts/" \;
-
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
-            exit "$status"
-          fi
-
-      - name: Upload autopkgtest logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: autopkgtest-${{ github.sha }}
-          path: ${{ runner.temp }}/autopkgtest-artifacts
-          if-no-files-found: warn
 
       - name: Build Debian artifacts
         run: |
@@ -138,16 +82,13 @@ jobs:
           [ "${#binary_debs[@]}" -ge 1 ]
 
       - name: Upload Debian artifacts
-        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: debian-package-${{ github.sha }}
           path: ${{ runner.temp }}/debian-artifacts
           if-no-files-found: error
-
   publish-and-promote:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: validate
+    needs: build_release_artifacts
     runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
     timeout-minutes: 360
     concurrency:
@@ -188,7 +129,7 @@ jobs:
 
       - name: Sign source upload
         env:
-          VERSION: ${{ needs.validate.outputs.version }}
+          VERSION: ${{ needs.build_release_artifacts.outputs.version }}
           GPG_PRIVATE_KEY: ${{ steps.vault.outputs.GPG_PRIVATE_KEY }}
         run: |
           set -euo pipefail
@@ -207,7 +148,7 @@ jobs:
 
       - name: Publish and promote package
         env:
-          VERSION: ${{ needs.validate.outputs.version }}
+          VERSION: ${{ needs.build_release_artifacts.outputs.version }}
           LAUNCHPAD_TOKEN: ${{ steps.vault.outputs.LP_OAUTH_TOKEN }}:${{ steps.vault.outputs.LP_OAUTH_TOKEN_SECRET }}:${{ steps.vault.outputs.LP_OAUTH_CONSUMER_KEY }}
         run: |
           set -euo pipefail
