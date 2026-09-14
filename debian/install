@@ -1,7 +1,6 @@
 check-ssid-duplicated.sh /usr/bin
 config.sh /usr/share/oem-scripts
 dkms-helper /usr/bin
-get-oem-info.sh /usr/bin
 get-private-ppa /usr/bin
 live-build-image-chroot.sh /usr/bin
 lp-api /usr/bin
