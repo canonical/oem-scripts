@@ -2,11 +2,8 @@
 
 flake8 --ignore E501,W503,E203 \
     bug-bind.py \
-    get-oem-auth-token \
-    get-oemshare-auth-token \
     lp-bug \
     mir-bug \
-    oem-getiso \
     oem-meta-packages \
     pkg-list \
     pkg-iot-meta \

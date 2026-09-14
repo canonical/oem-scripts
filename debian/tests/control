@@ -25,10 +25,6 @@ Tests: pkg-list
 Depends: @
 Restrictions: allow-stderr
 
-Tests: recovery-from-iso.sh
-Depends: @, openssh-client
-Restrictions: allow-stderr
-
 # Everything below drives the real Launchpad or the private OEM archive. It
 # needs credentials that only the CI credential setup installs, so each test
 # exits 77 when they are missing or the service is down; see

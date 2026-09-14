@@ -1,6 +1,0 @@
-include:
-  - https://gitlab.com/hustle-ci/pipeline/raw/master/salsa-ci.yml
-  - https://gitlab.com/hustle-ci/pipeline/raw/master/pipeline-jobs.yml
-
-variables:
-  RELEASE: 'focal'

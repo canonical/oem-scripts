@@ -3,6 +3,4 @@
 shellcheck \
     lp-dl-attm \
     supported-lts-ubuntu-series.sh \
-    -x trigger-sanity3.sh \
-    local-repo \
-    -x image-deploy.sh
+    local-repo

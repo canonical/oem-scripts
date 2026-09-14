@@ -10,13 +10,13 @@ Requires Github Token. Sample Fine-grained permissions:
 
 export GITHUB_TOKEN=ghp_your_token_here
 
-./gh_action_api.py --owner myuser --repo myrepo --list-workflows
-./gh_action_api.py --owner myuser --repo myrepo --workflow deploy.yml \
+python3 -m oem_scripts.gh_actions_api --owner myuser --repo myrepo --list-workflows
+python3 -m oem_scripts.gh_actions_api --owner myuser --repo myrepo --workflow deploy.yml \
   --input cid=123456-123456 --input plan=camera-automated
 
 ### Usage as Module:
 
-from gh_action_api import GitHubActionsAPI
+from oem_scripts.gh_actions_api import GitHubActionsAPI
 
 api = GitHubActionsAPI(token="ghp_xxx", owner="myuser", repo="myrepo")
 api.trigger_workflow(

@@ -2,15 +2,6 @@
 
 CONFIG="$HOME/.config/oem-scripts/config.ini"
 
-valid_oem_scripts_config_jenkins_addr ()
-{
-    if [ -f "$CONFIG" ] && grep "^jenkins_addr = " "$CONFIG" > /dev/null 2>&1; then
-        true
-    else
-        false
-    fi
-}
-
 valid_oem_scripts_config ()
 {
     if [ -f "$CONFIG" ] && grep "^oauth_consumer_key = " "$CONFIG" >/dev/null 2>&1; then
