@@ -17,7 +17,7 @@ Vcs-Browser: https://code.launchpad.net/~oem-solutions-engineers/pc-enablement/+
 Vcs-Git: https://git.launchpad.net/~oem-solutions-engineers/pc-enablement/+git/oem-scripts
 
 Package: oem-scripts
-Architecture: any
+Architecture: all
 Depends:
  ${misc:Depends},
  ${python3:Depends},
