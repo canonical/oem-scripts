@@ -22,6 +22,5 @@ local-repo /usr/bin
 image-deploy.sh /usr/bin
 c3-v2-api.py /usr/bin
 trigger_sanity_c3.py /usr/bin
-onesshup.sh /usr/bin
 list-packages.sh /usr/bin
 isoplatformlist.py /usr/bin
