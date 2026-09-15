@@ -24,12 +24,10 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(dpkg-parsechangelog --show-field Version)
-          DISTRIBUTION=$(dpkg-parsechangelog --show-field Distribution)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          if [ "$GITHUB_REF_NAME" != "$VERSION" ] || [ "$DISTRIBUTION" != resolute ]; then
-            printf 'Tag %s must match changelog version %s for resolute; distribution is %s.\n' \
-              "$GITHUB_REF_NAME" "$VERSION" "$DISTRIBUTION" >&2
+          if [ "$GITHUB_REF_NAME" != "$VERSION" ]; then
+            printf 'Tag %s must match changelog version %s.\n' "$GITHUB_REF_NAME" "$VERSION" >&2
             exit 1
           fi
 
