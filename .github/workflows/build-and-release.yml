@@ -47,6 +47,17 @@ jobs:
           sudo mk-build-deps --install --remove \
             --tool 'apt-get --yes --no-install-recommends' debian/control
 
+      - name: Check autopkgtest runner prerequisites
+        run: |
+          set -euo pipefail
+          if ! ubuntu-distro-info --all | grep -Fx resolute >/dev/null; then
+            echo "Error: the runner's distro-info-data does not recognize resolute." >&2
+            exit 1
+          fi
+          if [ ! -r /etc/default/locale ] || ! grep -q '^LANG=' /etc/default/locale; then
+            echo 'Error: run-autopkgtest requires usable locale data in /etc/default/locale.' >&2
+            exit 1
+          fi
       - name: Enable KVM access
         run: |
           set -euo pipefail
@@ -133,6 +144,9 @@ jobs:
     needs: validate
     runs-on: [self-hosted, oem-enablement, amd64, noble, medium]
     timeout-minutes: 360
+    # GitHub retains only one pending concurrency job; a newer tagged run can cancel an
+    # older pending run. Do not push a new release tag until the preceding tagged workflow
+    # reaches a terminal state; rerun a cancelled pending tag only after the active release finishes.
     concurrency:
       group: oem-scripts-ppa-release
       cancel-in-progress: false
@@ -201,7 +215,7 @@ jobs:
           ARCHIVE='~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
           FROM_ARCHIVE='https://api.launchpad.net/devel/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
           SOURCE_NAME='oem-scripts'
-          MAX_ATTEMPTS=90
+          MAX_ATTEMPTS=70
           POLL_SECONDS=60
 
           source_entries() {
@@ -261,13 +275,15 @@ jobs:
           wait_for_binary() {
             local series=$1
             local entries
-            for _ in $(seq 1 "$MAX_ATTEMPTS"); do
+            for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
               entries=$(binary_entries "$series")
               if has_exact_binary <<<"$entries"; then
                 printf '%s %s: Published\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
                 return 0
               fi
-              sleep "$POLL_SECONDS"
+              if (( attempt < MAX_ATTEMPTS )); then
+                sleep "$POLL_SECONDS"
+              fi
             done
             printf 'Timed out waiting for %s %s in %s: https://launchpad.net/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools\n' \
               "$SOURCE_NAME" "$VERSION" "$series" >&2
