@@ -42,8 +42,7 @@ from tempfile import TemporaryDirectory
 
 SUBSCRIBER = "canonical-mainstream"
 
-staging_copy_template = Template(
-    '''Operation: copy_package
+staging_copy_template = Template('''Operation: copy_package
 Source: $source
 Destination: $destination
 Package: $packages
@@ -63,8 +62,7 @@ And then verify the production archive.
 """
 deb http://oem.archive.canonical.com $distribution $component
 deb-src http://oem.archive.canonical.com $distribution $component
-"""'''
-)
+"""''')
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -802,8 +800,7 @@ def deal_with_maintainer_scripts(pkg_name, branch, git_dir) -> bool:
     modified = False
 
     with open(postinst_path, "w") as f:
-        f.write(
-            f"""#!/bin/sh
+        f.write(f"""#!/bin/sh
 
 set -e
 
@@ -820,16 +817,14 @@ case "$1" in
 esac
 
 #DEBHELPER#
-"""
-        )
+""")
     _run_command(["git", "add", "debian/postinst"])
     output, _, _ = _run_command(["git", "status", "--porcelain", "debian/postinst"])
     if output:
         modified = True
 
     with open(postrm_path, "w") as f:
-        f.write(
-            """#!/bin/sh
+        f.write("""#!/bin/sh
 
 set -e
 
@@ -845,8 +840,7 @@ case "$1" in
 esac
 
 #DEBHELPER#
-"""
-        )
+""")
     _run_command(["git", "add", "debian/postrm"])
     output, _, _ = _run_command(["git", "status", "--porcelain", "debian/postrm"])
     if output:
@@ -1735,16 +1729,14 @@ def collect_pkg_info(
             print(f"{data} is not supported.")
             exit(1)
 
-        json_data = json.loads(
-            f"""{{
+        json_data = json.loads(f"""{{
 "Customer": "{customer}",
 "Group": "{group}",
 "Codename": "{codename}",
 "Platform": "",
 "MarketName": "",
 "PlatformLPTag": "{tag}"
-}}"""
-        )
+}}""")
         json_data["ProductNames"] = []
     else:
         project = data.get("project")
@@ -1767,16 +1759,14 @@ def collect_pkg_info(
             print(f"{data} is not supported.")
             exit(1)
 
-        json_data = json.loads(
-            f"""{{
+        json_data = json.loads(f"""{{
 "Customer": "{customer}",
 "Group": "{group}",
 "Codename": "{codename}",
 "Platform": "",
 "MarketName": "",
 "PlatformLPTag": "{tag}"
-}}"""
-        )
+}}""")
 
         if "productnames" in data:
             json_data["ProductNames"] = data["productnames"]

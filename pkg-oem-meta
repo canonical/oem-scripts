@@ -353,8 +353,7 @@ GRUB_FLAVOUR_ORDER={grub_flavour}
 
     if real:
         with open("postinst", "w") as f:
-            f.write(
-                f"""#!/bin/sh
+            f.write(f"""#!/bin/sh
 
 set -e
 
@@ -371,11 +370,9 @@ case "$1" in
 esac
 
 #DEBHELPER#
-"""
-            )
+""")
         with open("postrm", "w") as f:
-            f.write(
-                """#!/bin/sh
+            f.write("""#!/bin/sh
 
 set -e
 
@@ -391,8 +388,7 @@ case "$1" in
 esac
 
 #DEBHELPER#
-"""
-            )
+""")
 
     gbp_conf = f"""[DEFAULT]
 pristine-tar = False
@@ -415,14 +411,12 @@ debian-tag = {branch}_%(version)s
     timestamp = strftime("%a, %d %b %Y %H:%M:%S %z", localtime())
 
     with open("changelog", "w") as f:
-        f.write(
-            f"""{meta} ({version}) {release}; urgency=medium
+        f.write(f"""{meta} ({version}) {release}; urgency=medium
 
   * Meta package for {Codename} {Platform}.{lp_bug}
 
  -- {fullname} <{email}>  {timestamp}
-"""
-        )
+""")
 
     if not args.market_name:
         platformStr = Platform + " platform"
@@ -455,8 +449,7 @@ debian-tag = {branch}_%(version)s
         raise Exception("Unsupported series")
 
     with open("control", "w") as f:
-        f.write(
-            f"""Source: {meta}
+        f.write(f"""Source: {meta}
 Section: misc
 Priority: optional
 Maintainer: Commercial Engineering <commercial-engineering@canonical.com>
@@ -472,14 +465,11 @@ XB-Modaliases: ${{modaliases}}
 XB-Ubuntu-OEM-Kernel-Flavour: {flavour}
 Description: hardware support for {Codename} {platformStr}
  This is a metapackage for {Codename} {platformsStr}
- It installs packages needed to support this hardware fully.\n"""
-        )
+ It installs packages needed to support this hardware fully.\n""")
         if real:
-            f.write(
-                f"""\nPackage: {factory}
+            f.write(f"""\nPackage: {factory}
 Architecture: all
-Depends: ${{misc:Depends}}{factory_depends}\n"""
-            )
+Depends: ${{misc:Depends}}{factory_depends}\n""")
 
             if codename == "sutton":
                 f.write(f"""Suggests: {doc}\n""")
@@ -568,15 +558,13 @@ License: GPL-3
                     f.write(f"alias dmi:*bvn{bios_vendor}:bvr{bios_ids}* meta {meta}\n")
 
     with open("rules", "w") as f:
-        f.write(
-            """#!/usr/bin/make -f
+        f.write("""#!/usr/bin/make -f
 # -*- makefile -*-
 
 export DH_VERBOSE=1
 
 %:
-\tdh $@ --with modaliases\n"""
-        )
+\tdh $@ --with modaliases\n""")
 
     os.chmod("rules", 0o755)
 
@@ -593,15 +581,12 @@ export DH_VERBOSE=1
         os.mkdir("tests")
     os.chdir("tests")
     with open("control", "w") as f:
-        f.write(
-            """Tests: meta
+        f.write("""Tests: meta
 Depends: @
 Restrictions: needs-root
-"""
-        )
+""")
     with open("meta", "w") as f:
-        f.write(
-            """#!/bin/bash
+        f.write("""#!/bin/bash
 
 exec 2>&1
 set -euo pipefail
@@ -612,16 +597,13 @@ apt-get full-upgrade --yes
 
 apt-get update
 apt-get full-upgrade --yes
-"""
-        )
+""")
         if real:
-            f.write(
-                f"""
+            f.write(f"""
 grep ^GRUB_FLAVOUR_ORDER={grub_flavour}$ /etc/default/grub.d/oem-flavour.cfg
 
 dpkg-query -W -f='${{Status}}' {args.kernel} | grep "install ok installed"
-"""
-            )
+""")
 
         f.write(f"\napt-get autoremove --purge --yes {meta}\n")
     os.chdir("..")

@@ -108,18 +108,15 @@ debian-tag = {branch}_%(version)s
     timestamp = strftime("%a, %d %b %Y %H:%M:%S %z", localtime())
 
     with open("changelog", "w") as f:
-        f.write(
-            f"""{meta} ({version}) {release}; urgency=medium
+        f.write(f"""{meta} ({version}) {release}; urgency=medium
 
   * Meta package for {project_name} project.
 
  -- {fullname} <{email}>  {timestamp}
-"""
-        )
+""")
 
     with open("control", "w") as f:
-        f.write(
-            f"""Source: {meta}
+        f.write(f"""Source: {meta}
 Section: misc
 Priority: optional
 Maintainer: Commercial Engineering <commercial-engineering@canonical.com>
@@ -133,8 +130,7 @@ Architecture: all
 Depends: ${{misc:Depends}}, ubuntu-oem-keyring{extra}
 Description: hardware support for {project_name} project
  This is a metapackage for {project_name} project
- It installs packages needed to support this hardware fully.\n"""
-        )
+ It installs packages needed to support this hardware fully.\n""")
 
     timestamp = os.getenv("COPYRIGHT_YEAR", strftime("%Y", localtime()))
 
@@ -171,15 +167,13 @@ License: GPL-3
         )
 
     with open("rules", "w") as f:
-        f.write(
-            """#!/usr/bin/make -f
+        f.write("""#!/usr/bin/make -f
 # -*- makefile -*-
 
 export DH_VERBOSE=1
 
 %:
-\tdh $@\n"""
-        )
+\tdh $@\n""")
 
     os.chmod("rules", 0o755)
 
@@ -196,15 +190,12 @@ export DH_VERBOSE=1
         os.mkdir("tests")
     os.chdir("tests")
     with open("control", "w") as f:
-        f.write(
-            """Tests: meta
+        f.write("""Tests: meta
 Depends: @
 Restrictions: needs-root
-"""
-        )
+""")
     with open("meta", "w") as f:
-        f.write(
-            """#!/bin/bash
+        f.write("""#!/bin/bash
 
 exec 2>&1
 set -euo pipefail
@@ -215,8 +206,7 @@ apt-get full-upgrade --yes
 
 apt-get update
 apt-get full-upgrade --yes
-"""
-        )
+""")
 
         f.write(f"\napt-get autoremove --purge --yes {meta}\n")
     os.chdir("..")

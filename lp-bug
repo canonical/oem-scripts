@@ -32,7 +32,6 @@ from oem_scripts import _run_command
 from oem_scripts.LaunchpadLogin import LaunchpadLogin
 from tempfile import TemporaryDirectory
 
-
 distroinfo = UbuntuDistroInfo()
 
 parser = argparse.ArgumentParser(
