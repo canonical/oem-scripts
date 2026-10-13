@@ -8,7 +8,7 @@ on:
 jobs:
   validate:
     name: Validate and build release artifacts
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -43,7 +43,7 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
             acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
-            qemu-system-x86 qemu-utils
+            qemu-system-x86 qemu-utils vmdb2
           sudo mk-build-deps --install --remove \
             --tool 'apt-get --yes --no-install-recommends' debian/control
 
@@ -88,9 +88,9 @@ jobs:
         with:
           name: autopkgtest-${{ github.sha }}
           path: |
-            autopkgtest-build-qemu-*-resolute-summary.log
-            autopkgtest-build-qemu-*-resolute-complete.log
-            autopkgtest-build-qemu-*-resolute
+            autopkgtest-build-qemu-*-summary.log
+            autopkgtest-build-qemu-*-complete.log
+            autopkgtest-build-qemu-*/**
           if-no-files-found: warn
 
       - name: Build Debian artifacts
@@ -142,7 +142,7 @@ jobs:
           if-no-files-found: error
   publish-and-promote:
     needs: validate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 360
     # GitHub retains only one pending concurrency job; a newer tagged run can cancel an
     # older pending run. Do not push a new release tag until the preceding tagged workflow

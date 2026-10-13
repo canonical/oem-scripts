@@ -1,6 +1,4 @@
 self-hosted-runner:
   labels:
-    - oem-enablement
-    - amd64
-    - noble
-    - medium
+    # ponytail: actionlint's built-in list predates the ubuntu-26.04 public preview; drop once actionlint knows it.
+    - ubuntu-26.04

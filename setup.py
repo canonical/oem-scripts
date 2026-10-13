@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 """Short OEM related scripts"""
+
 #
 # Copyright (C) 2020 Canonical Ltd.
 #

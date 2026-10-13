@@ -28,7 +28,6 @@ from apt import apt_pkg
 from logging import debug, error, critical, info, warning
 from urllib.parse import urljoin
 
-
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog="""
@@ -245,7 +244,7 @@ def get_depends(
             for depends in version.depends_list_str[target]:
                 found = False
                 for depend in depends:
-                    (name, ver, _) = depend
+                    name, ver, _ = depend
                     pkg = cache[name]
                     if name in map(lambda x: x[0], depends_list):
                         found = True
@@ -305,7 +304,7 @@ exclude_list = []
 
 if args.exclude:
     for line in args.exclude.readlines():
-        (name, ver) = line.strip().split(" ")
+        name, ver = line.strip().split(" ")
         if not any(name == _name and ver == _ver for _name, _ver in exclude_list):
             exclude_list.append((name, ver))
 
