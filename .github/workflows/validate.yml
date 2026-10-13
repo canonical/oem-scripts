@@ -14,7 +14,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -33,6 +33,17 @@ jobs:
           sudo mk-build-deps --install --remove \
             --tool 'apt-get --yes --no-install-recommends' debian/control
 
+      - name: Check autopkgtest runner prerequisites
+        run: |
+          set -euo pipefail
+          if ! ubuntu-distro-info --all | grep -Fx resolute >/dev/null; then
+            echo "Error: the runner's distro-info-data does not recognize resolute." >&2
+            exit 1
+          fi
+          if [ ! -r /etc/default/locale ] || ! grep -q '^LANG=' /etc/default/locale; then
+            echo 'Error: run-autopkgtest requires usable locale data in /etc/default/locale.' >&2
+            exit 1
+          fi
       - name: Enable KVM access
         run: |
           set -euo pipefail
