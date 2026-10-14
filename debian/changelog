@@ -1,3 +1,9 @@
+oem-scripts (2.73~test1) resolute; urgency=medium
+
+  * Test build with GitHub workflow
+
+ -- Thomas Chen <thomas.chen@canonical.com>  Wed, 14 Oct 2026 11:37:37 +0800
+
 oem-scripts (2.72) resolute; urgency=medium
 
   * oem-metapackage-mir-check: Host in oem-scripts
@@ -1402,7 +1408,7 @@ oem-scripts (1.11) focal; urgency=medium
 oem-scripts (1.10) focal; urgency=medium
 
   [ Shengyao Xue ]
-  * Add autoISO.go to oem-scripts. 
+  * Add autoISO.go to oem-scripts.
 
   [ Shih-Yuan Lee (FourDollars) ]
   * Add the dh-golang support.
@@ -1469,7 +1475,7 @@ oem-scripts (1.5) focal; urgency=medium
 oem-scripts (1.4) focal; urgency=medium
 
   * debian/tests/mir-bug-verification: Workaround for update-grub in Linux
-    container. 
+    container.
 
  -- Shih-Yuan Lee (FourDollars) <sylee@canonical.com>  Fri, 16 Jul 2021 14:00:06 +0800
 
@@ -1589,7 +1595,7 @@ oem-scripts (0.93) focal; urgency=medium
     debian/tests/mir-bug: Skip the test of mir-bug because it is buggy.
   * debian/tests/lp-dl-attm,
     lp-dl-attm: Support the private bug.
-  * lp-dl-attm: Refine the usage and check if a valid bug id. 
+  * lp-dl-attm: Refine the usage and check if a valid bug id.
   * debian/rules,
     tests/test_shellcheck: Use shellcheck to check lp-dl-attm.
 
@@ -1714,7 +1720,7 @@ oem-scripts (0.79) focal; urgency=medium
   * oem-meta-packages: Fix the problem when it falls back to linux-oem-20.04.
   * oem-meta-packages: Ignore the warnings for the maintainer scripts.
   * oem-meta-packages: Fix the modified detection problem of debian/postrm.
-  * oem-meta-packages: Skip the staging-lock bugs with cqa-verified-staging. 
+  * oem-meta-packages: Skip the staging-lock bugs with cqa-verified-staging.
 
  -- Shih-Yuan Lee (FourDollars) <sylee@canonical.com>  Mon, 01 Feb 2021 03:26:08 +0000
 
@@ -2131,7 +2137,7 @@ oem-scripts (0.46) focal; urgency=medium
 
 oem-scripts (0.45) bionic; urgency=medium
 
-  * launchpad-api: Fix some problems by shellcheck. 
+  * launchpad-api: Fix some problems by shellcheck.
   * debian/tests/launchpad-api,
     launchpad-api: Make the api url more flexible.
 
@@ -2397,7 +2403,7 @@ oem-scripts (0.22) precise; urgency=medium
     - Add retry mechanism
     - Add RetryLimitExceed exception
     - Catch user interrupt exception
-    - Catch unknown exceptions 
+    - Catch unknown exceptions
     - Return exit code
 
  -- Franz Hsieh (Franz) <franz.hsieh@canonical.com>  Fri, 01 Aug 2014 12:42:51 +0800
@@ -2507,8 +2513,8 @@ oem-scripts (0.9) precise; urgency=low
     with zsync over https.
 
   [ Hsin-Yi Chen (hychen) ]
-  
-  * debian/control: 
+
+  * debian/control:
     - added zsync-curl, python-mechanize into deb depends.
     - bump standard version.
   * oem-getiso: removed duplicat cods.
