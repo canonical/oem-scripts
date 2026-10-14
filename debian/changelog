@@ -1,4 +1,4 @@
-oem-scripts (2.73~test1) resolute; urgency=medium
+oem-scripts (2.72.1) resolute; urgency=medium
 
   * Test build with GitHub workflow
 

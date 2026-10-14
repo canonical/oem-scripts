@@ -12,6 +12,9 @@ on:
       - master
     paths-ignore:
       - '.github/**'
+      # Release metadata only; the tag build validates release commits.
+      - 'debian/changelog'
+      - 'debian/copyright'
 
 jobs:
   validate:
