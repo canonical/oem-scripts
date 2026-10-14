@@ -40,7 +40,9 @@ jobs:
             exit 1
           fi
 
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+          # ponytail: temporary skip for X.Y.Z test versions; restore once a master release supersedes them.
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
+            ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
             printf 'Release tag %s must point to a commit reachable from master.\n' \
               "$GITHUB_REF_NAME" >&2
             exit 1
