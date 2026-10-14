@@ -220,6 +220,8 @@ jobs:
         env:
           VERSION: ${{ needs.validate.outputs.version }}
           SERIES: ${{ needs.validate.outputs.series }}
+          # dput verifies the upload signature against the keyring from the signing step.
+          GNUPGHOME: ${{ runner.temp }}/gnupg
           LAUNCHPAD_TOKEN: ${{ steps.vault.outputs.LP_OAUTH_TOKEN }}:${{ steps.vault.outputs.LP_OAUTH_TOKEN_SECRET }}:${{ steps.vault.outputs.LP_OAUTH_CONSUMER_KEY }}
         run: |
           set -euo pipefail

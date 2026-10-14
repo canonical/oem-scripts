@@ -7,6 +7,8 @@ on:
       - master
     paths-ignore:
       - '.github/**'
+      - 'debian/changelog'
+      - 'debian/copyright'
   push:
     branches:
       - master
