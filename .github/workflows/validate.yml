@@ -5,9 +5,20 @@ on:
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - '.github/**'
+      - 'debian/changelog'
+      - 'debian/copyright'
+      - 'README.md'
   push:
     branches:
       - master
+    paths-ignore:
+      - '.github/**'
+      # Docs and release metadata only; the tag build validates release commits.
+      - 'debian/changelog'
+      - 'debian/copyright'
+      - 'README.md'
 
 jobs:
   validate:
