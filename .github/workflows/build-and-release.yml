@@ -15,6 +15,7 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.metadata.outputs.version }}
+      series: ${{ steps.metadata.outputs.series }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,7 +27,14 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(dpkg-parsechangelog --show-field Version)
+          SERIES=$(dpkg-parsechangelog --show-field Distribution)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "series=$SERIES" >> "$GITHUB_OUTPUT"
+
+          if [ "$SERIES" = UNRELEASED ]; then
+            echo 'Changelog distribution is UNRELEASED; set the target series.' >&2
+            exit 1
+          fi
 
           # Git forbids '~' in tags, so DEP-14 tags spell it '_'.
           if [ "${GITHUB_REF_NAME//_/\~}" != "$VERSION" ]; then
@@ -212,12 +220,13 @@ jobs:
       - name: Publish and promote package
         env:
           VERSION: ${{ needs.validate.outputs.version }}
+          SERIES: ${{ needs.validate.outputs.series }}
           LAUNCHPAD_TOKEN: ${{ steps.vault.outputs.LP_OAUTH_TOKEN }}:${{ steps.vault.outputs.LP_OAUTH_TOKEN_SECRET }}:${{ steps.vault.outputs.LP_OAUTH_CONSUMER_KEY }}
         run: |
           set -euo pipefail
           VERSION=${VERSION:?}
+          SERIES=${SERIES:?}
           ARCHIVE='~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
-          FROM_ARCHIVE='https://api.launchpad.net/devel/~oem-solutions-engineers/+archive/ubuntu/pc-enablement-tools'
           SOURCE_NAME='oem-scripts'
           MAX_ATTEMPTS=70
           POLL_SECONDS=60
@@ -294,49 +303,21 @@ jobs:
             return 1
           }
 
-          source_pending=$(source_entries resolute Pending)
-          source_published=$(source_entries resolute Published)
-          source_all=$(source_entries resolute)
+          # ponytail: uploads only to the changelog series; copying to other series is TBD.
+          source_pending=$(source_entries "$SERIES" Pending)
+          source_published=$(source_entries "$SERIES" Published)
+          source_all=$(source_entries "$SERIES")
           if has_exact_version <<<"$source_pending" || has_exact_version <<<"$source_published"; then
-            printf 'resolute %s: existing upload\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s %s: existing upload\n' "$SERIES" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
           elif has_exact_version <<<"$source_all"; then
             echo "Source version $VERSION exists in a terminal Launchpad state." >&2
             exit 1
           else
             dput ppa:oem-solutions-engineers/pc-enablement-tools \
               "release-artifacts/oem-scripts_${VERSION}_source.changes"
-            printf 'resolute %s: upload requested\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s %s: upload requested\n' "$SERIES" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
           fi
-          wait_for_binary resolute
-
-          for series in noble jammy focal; do
-            target_pending=$(source_entries "$series" Pending)
-            target_published=$(source_entries "$series" Published)
-            target_all=$(source_entries "$series")
-            target_binaries=$(binary_entries "$series")
-
-            if has_exact_binary <<<"$target_binaries"; then
-              printf '%s %s: already Published\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-
-            if has_exact_version <<<"$target_pending" || has_exact_version <<<"$target_published"; then
-              printf '%s %s: existing copy\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
-            elif has_exact_version <<<"$target_all"; then
-              echo "Target version $VERSION exists in a terminal Launchpad state for $series." >&2
-              exit 1
-            else
-              ./lp-api post "$ARCHIVE" \
-                ws.op=copyPackage \
-                "source_name=$SOURCE_NAME" \
-                "version=$VERSION" \
-                "from_archive=$FROM_ARCHIVE" \
-                to_pocket=Release \
-                "to_series=$series"
-              printf '%s %s: copy requested\n' "$series" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
-            fi
-            wait_for_binary "$series"
-          done
+          wait_for_binary "$SERIES"
 
       - name: Remove temporary signing keyring
         if: always()
