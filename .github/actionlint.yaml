@@ -1,4 +1,4 @@
 self-hosted-runner:
   labels:
-    # ponytail: actionlint's built-in list predates the ubuntu-26.04 public preview; drop once actionlint knows it.
+    # actionlint's built-in label list predates the ubuntu-26.04 GitHub-hosted runner (public preview).
     - ubuntu-26.04

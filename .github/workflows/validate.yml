@@ -9,14 +9,16 @@ on:
       - '.github/**'
       - 'debian/changelog'
       - 'debian/copyright'
+      - 'README.md'
   push:
     branches:
       - master
     paths-ignore:
       - '.github/**'
-      # Release metadata only; the tag build validates release commits.
+      # Docs and release metadata only; the tag build validates release commits.
       - 'debian/changelog'
       - 'debian/copyright'
+      - 'README.md'
 
 jobs:
   validate:

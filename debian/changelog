@@ -1,3 +1,18 @@
+oem-scripts (2.73) resolute; urgency=medium
+
+  * Remove obsolete scripts: get-oem-info.sh, onesshup.sh,
+    modinfo2json.py, dkms-helper, oem-getiso, recovery-from-iso.sh,
+    release-helper.py and others.
+  * debian/control: change Architecture from any to all.
+  * trigger_sanity_c3.py: retire Jenkins, fix the broken import.
+  * lp-api: honour $LAUNCHPAD_API and $LAUNCHPAD_URL.
+  * debian/tests: add offline Launchpad tests; skip online tests instead
+    of failing.
+  * Add GitHub Actions validate and build-and-release workflows.
+  * Add README.md.
+
+ -- Thomas Chen <thomas.chen@canonical.com>  Wed, 14 Oct 2026 13:31:45 +0800
+
 oem-scripts (2.72.2) resolute; urgency=medium
 
   * Test build with GitHub workflow (bump version)
