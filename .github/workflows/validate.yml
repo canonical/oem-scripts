@@ -10,6 +10,7 @@ on:
       - 'debian/changelog'
       - 'debian/copyright'
       - 'README.md'
+      - 'Dockerfile'
   push:
     branches:
       - master
@@ -19,6 +20,7 @@ on:
       - 'debian/changelog'
       - 'debian/copyright'
       - 'README.md'
+      - 'Dockerfile'
 
 jobs:
   validate:
