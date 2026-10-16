@@ -1,0 +1,67 @@
+name: Run oem-scripts autopkgtests
+description: >-
+  Install the package build dependencies, run ./run-autopkgtest lxc resolute,
+  and upload its logs. Later build steps rely on the installed build dependencies.
+  Exit codes 0 and 2 (some tests skipped) pass.
+
+runs:
+  using: composite
+  steps:
+    - name: Install autopkgtest and build dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
+          autopkgtest debootstrap devscripts distro-info dnsmasq-base dpkg-dev equivs \
+          iptables lxc lxc-templates
+        sudo mk-build-deps --install --remove \
+          --tool 'apt-get --yes --no-install-recommends' debian/control
+
+    - name: Check autopkgtest runner prerequisites
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! ubuntu-distro-info --all | grep -Fx resolute >/dev/null; then
+          echo "Error: the runner's distro-info-data does not recognize resolute." >&2
+          exit 1
+        fi
+        if [ ! -r /etc/default/locale ] || ! grep -q '^LANG=' /etc/default/locale; then
+          echo 'Error: run-autopkgtest requires usable locale data in /etc/default/locale.' >&2
+          exit 1
+        fi
+
+    - name: Enable LXC networking
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo systemctl restart lxc-net
+        ip link show lxcbr0
+        # ponytail: Docker on the runner sets the FORWARD policy to DROP; allow lxcbr0 only.
+        sudo iptables -I FORWARD -i lxcbr0 -j ACCEPT
+        sudo iptables -I FORWARD -o lxcbr0 -j ACCEPT
+
+    - name: Run isolated autopkgtests
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/autopkgtest-home"
+        set +e
+        HOME="$RUNNER_TEMP/autopkgtest-home" ./run-autopkgtest lxc resolute
+        status=$?
+        set -e
+
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
+
+    - name: Upload autopkgtest logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: autopkgtest-${{ github.sha }}
+        path: |
+          autopkgtest-build-lxc-*-summary.log
+          autopkgtest-build-lxc-*-complete.log
+          autopkgtest-build-lxc-*/**
+        if-no-files-found: warn

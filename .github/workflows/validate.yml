@@ -35,61 +35,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
-      - name: Install validation dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-            acl autopkgtest cloud-image-utils devscripts distro-info dpkg-dev equivs \
-            qemu-system-x86 qemu-utils vmdb2
-          sudo mk-build-deps --install --remove \
-            --tool 'apt-get --yes --no-install-recommends' debian/control
-
-      - name: Check autopkgtest runner prerequisites
-        run: |
-          set -euo pipefail
-          if ! ubuntu-distro-info --all | grep -Fx resolute >/dev/null; then
-            echo "Error: the runner's distro-info-data does not recognize resolute." >&2
-            exit 1
-          fi
-          if [ ! -r /etc/default/locale ] || ! grep -q '^LANG=' /etc/default/locale; then
-            echo 'Error: run-autopkgtest requires usable locale data in /etc/default/locale.' >&2
-            exit 1
-          fi
-      - name: Enable KVM access
-        run: |
-          set -euo pipefail
-          if [ ! -c /dev/kvm ]; then
-            echo 'Error: this runner does not expose /dev/kvm' >&2
-            exit 1
-          fi
-          sudo setfacl --modify "u:$(id --user):rw" /dev/kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
-
-      - name: Run isolated autopkgtests
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/autopkgtest-home"
-          set +e
-          HOME="$RUNNER_TEMP/autopkgtest-home" ./run-autopkgtest qemu resolute
-          status=$?
-          set -e
-
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
-            exit "$status"
-          fi
-
-      - name: Upload autopkgtest logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: autopkgtest-${{ github.sha }}
-          path: |
-            autopkgtest-build-qemu-*-summary.log
-            autopkgtest-build-qemu-*-complete.log
-            autopkgtest-build-qemu-*/**
-          if-no-files-found: warn
+      - name: Run autopkgtests
+        uses: ./.github/actions/autopkgtest
 
       - name: Build Debian artifacts
         run: |
@@ -112,7 +59,7 @@ jobs:
           source_tar=("$BUILD_PARENT/oem-scripts_${VERSION}".tar.*)
           [ "${#source_tar[@]}" -eq 1 ]
           tar --list --file "${source_tar[0]}" > "$RUNNER_TEMP/source-tar-contents"
-          if grep -F 'autopkgtest-build-qemu-' "$RUNNER_TEMP/source-tar-contents"; then
+          if grep -F 'autopkgtest-build-' "$RUNNER_TEMP/source-tar-contents"; then
             echo 'Generated autopkgtest output was included in the source package.' >&2
             exit 1
           fi
