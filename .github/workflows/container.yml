@@ -1,0 +1,114 @@
+name: Container image
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly full rebuild picks up base image and archive updates.
+    - cron: '0 0 * * SUN'
+    # Hourly poll rebuilds only the tags whose oem-scripts lags the PPA.
+    - cron: '17 * * * *'
+  push:
+    branches:
+      - master
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/container.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/container.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    outputs:
+      tags: ${{ steps.plan.outputs.tags }}
+    steps:
+      - name: Log in to GitHub Container Registry
+        if: github.event.schedule == '17 * * * *'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select tags to build
+        id: plan
+        env:
+          POLL: ${{ github.event.schedule == '17 * * * *' }}
+        run: |
+          set -euo pipefail
+          all=(latest resolute noble jammy focal)
+          tags=()
+          for tag in "${all[@]}"; do
+            if [ "$POLL" != true ]; then
+              tags+=("$tag")
+              continue
+            fi
+            # A missing or unreadable image counts as stale.
+            if ! info=$(docker run --rm "$IMAGE:$tag" bash -c \
+                '. /etc/os-release; echo "$VERSION_CODENAME $(dpkg-query -W -f="\${Version}" oem-scripts)"'); then
+              tags+=("$tag")
+              continue
+            fi
+            read -r series image_version <<< "$info"
+            ppa_version=$(curl -fsSL "https://ppa.launchpadcontent.net/oem-solutions-engineers/pc-enablement-tools/ubuntu/dists/$series/main/binary-amd64/Packages.gz" |
+              gzip -dc | awk '/^Package: /{p=($2=="oem-scripts")} p&&/^Version: /{print $2; exit}') || true
+            if [ -z "$ppa_version" ]; then
+              echo "::warning::No oem-scripts for $series in the PPA; keeping $IMAGE:$tag."
+              continue
+            fi
+            echo "$tag ($series): image $image_version, PPA $ppa_version"
+            if dpkg --compare-versions "$ppa_version" gt "$image_version"; then
+              tags+=("$tag")
+            fi
+          done
+          echo "tags=$(jq -cn '$ARGS.positional' --args "${tags[@]}")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.tags != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJSON(needs.plan.outputs.tags) }}
+    env:
+      # Only master publishes; pull requests and other branches only build.
+      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          build-args: TAG=${{ matrix.tag }}
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ env.IMAGE }}:${{ matrix.tag }}
