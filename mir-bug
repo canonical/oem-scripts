@@ -38,6 +38,8 @@ from logging import debug, info, warning, error, critical
 from oem_scripts import (
     TAG_LIST,
     _get_items_from_git,
+    _normalize_copyright_year,
+    _normalize_modaliases_ids,
     _run_command,
     remove_prefix,
     yes_or_ask,
@@ -1174,7 +1176,44 @@ def check_and_update_git_repo(
         git_command = ("git", "clone", "--depth", "1", "-b", branch, git_repo, pkg_name)
         _run_command(git_command)
         os.chdir(os.path.join(tmpdir, pkg_name))
+        # Preserve the branch's existing debian/modaliases when it is a valid,
+        # semantically-equivalent representation. pkg-oem-meta always emits the
+        # DMI-style aliases, but the legacy PCI-style aliases are still valid per
+        # the OEM MIR exception
+        # (https://ubuntu.com/project/docs/MIR/mir-exceptions-oem/), so a mere
+        # difference in alias representation must not be reported as a required
+        # update.
+        branch_modaliases = os.path.join(tmpdir, pkg_name, "debian", "modaliases")
+        existing_modaliases = None
+        existing_ids = None
+        if os.path.exists(branch_modaliases):
+            with open(branch_modaliases, "r") as f:
+                existing_modaliases = f.read()
+            existing_ids = _normalize_modaliases_ids(
+                branch_modaliases, project, pkg_name
+            )
+        # Preserve the branch's existing debian/copyright when it differs from
+        # the regenerated one only by the copyright year, so that a yearly
+        # rollover is not reported as a required update.
+        branch_copyright = os.path.join(tmpdir, pkg_name, "debian", "copyright")
+        existing_copyright = None
+        if os.path.exists(branch_copyright):
+            with open(branch_copyright, "r") as f:
+                existing_copyright = f.read()
         shutil.copytree(new_dir, ".", dirs_exist_ok=True)
+        if existing_ids is not None:
+            new_ids = _normalize_modaliases_ids(branch_modaliases, project, pkg_name)
+            if new_ids is not None and new_ids == existing_ids:
+                with open(branch_modaliases, "w") as f:
+                    f.write(existing_modaliases)
+        if existing_copyright is not None and os.path.exists(branch_copyright):
+            with open(branch_copyright, "r") as f:
+                new_copyright = f.read()
+            if _normalize_copyright_year(
+                existing_copyright
+            ) == _normalize_copyright_year(new_copyright):
+                with open(branch_copyright, "w") as f:
+                    f.write(existing_copyright)
 
         if bootstrap:
             # Update debian/changelog

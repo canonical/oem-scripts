@@ -192,3 +192,62 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
                         result = prog.match(line.strip())
                         market_name = result.group(2)
         return kernel_flavour, kernel_meta, market_name, ids
+
+
+def _normalize_modaliases_ids(modaliases_path: str, project: str, pkg_name: str):
+    """Parse a debian/modaliases file into a normalized set of ids.
+
+    Both the legacy PCI-style aliases (which are still valid per the OEM MIR
+    exception) and the DMI-style aliases are accepted and mapped to the same
+    id, so a branch using either representation is treated as equivalent.
+
+    Returns a frozenset of ids, or None if the file cannot be parsed or any
+    alias does not belong to pkg_name.
+    """
+    if project == "somerville":
+        prog = re.compile(
+            r"alias (?:dmi:bvnDellInc\.:\*:svnDellInc\.:\*:sku([0-9A-F]{4}):\*|pci:\*sv00001028sd0000([0-9A-F]{4})[^ ]*) meta (.*)"
+        )
+    elif project == "stella":
+        prog = re.compile(
+            r"alias (?:dmi:\*:svnHP:\*:rvnHP:rn([0-9A-F]{4}):\*|pci:\*sv0000103Csd0000([0-9A-F]{4})[^ ]*) meta (.*)"
+        )
+    elif project == "sutton":
+        prog = re.compile(
+            r"alias dmi:\*bvn([0-9a-zA-Z]+):bvr([0-9a-zA-Z]{3})\*(:pvr(.*)\*)? meta (.*)"
+        )
+    else:
+        return None
+
+    ids = set()
+    with open(modaliases_path, "r") as modaliases:
+        for line in modaliases:
+            line = line.strip()
+            if not line:
+                continue
+            result = prog.match(line)
+            if result is None or result.lastindex is None:
+                return None
+            if result.group(result.lastindex) != pkg_name:
+                return None
+            if result.lastindex == 5:
+                ids.add((result.group(1), result.group(2), result.group(4)))
+            elif result.lastindex == 3:
+                ids.add(result.group(1) or result.group(2))
+            else:
+                ids.add(result.group(1))
+    return frozenset(ids)
+
+
+def _normalize_copyright_year(text: str) -> str:
+    """Return debian/copyright text with the year in the 'Copyright:' line masked.
+
+    Used to decide whether a regenerated debian/copyright differs from the
+    branch's version only by its year (a yearly rollover), which must not be
+    reported as a required update.
+    """
+    return re.sub(
+        r"(?m)^(Copyright:\s*)\S+(\s+Canonical\b)",
+        r"\1YEAR\2",
+        text,
+    )
