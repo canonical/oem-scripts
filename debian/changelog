@@ -1,3 +1,11 @@
+oem-scripts (2.74) resolute; urgency=medium
+
+  * docs: Split README to several documents for readability
+  * mir-bug: Merged #6: accept valid branches without forcing
+    representation-only updates
+
+ -- Thomas Chen <thomas.chen@canonical.com>  Fri, 13 Nov 2026 10:43:43 +0800
+
 oem-scripts (2.73) resolute; urgency=medium
 
   * Remove obsolete scripts: get-oem-info.sh, onesshup.sh,
