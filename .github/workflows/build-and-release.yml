@@ -40,6 +40,12 @@ jobs:
             exit 1
           fi
 
+          PY_VERSION=$(python3 -c 'import oem_scripts; print(oem_scripts.__version__)')
+          if [ "$GITHUB_REF_NAME" != "$PY_VERSION" ]; then
+            printf 'Tag %s must match oem_scripts.__version__ %s.\n' "$GITHUB_REF_NAME" "$PY_VERSION" >&2
+            exit 1
+          fi
+
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
             printf 'Release tag %s must point to a commit reachable from master.\n' \
               "$GITHUB_REF_NAME" >&2
