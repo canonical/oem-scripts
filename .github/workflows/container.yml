@@ -6,6 +6,7 @@ on:
     # Weekly full rebuild picks up base image and archive updates.
     - cron: '0 0 * * SUN'
     # Hourly poll rebuilds only the tags whose oem-scripts lags the PPA.
+    # The jobs below match this exact string; update them if it changes.
     - cron: '17 * * * *'
   push:
     branches:
@@ -24,7 +25,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: container-${{ github.ref }}
+  # Split by event so a scheduled run cannot replace a pending push run.
+  group: container-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
