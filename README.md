@@ -126,9 +126,9 @@ These files are in the repository but the .deb does not install them.
 
 `.github/workflows/validate.yml` runs on pull requests to `master` (not from forks), on pushes to `master`, and by manual dispatch (`workflow_dispatch`). It skips changes that only touch `.github/**`, `debian/changelog`, `debian/copyright` or `README.md`. The job:
 
-1. Installs autopkgtest, QEMU, vmdb2 and the build dependencies from `debian/control`.
-2. Checks that the runner knows the series `resolute` and has `/dev/kvm`.
-3. Runs `./run-autopkgtest qemu resolute`. Exit status 0 and 2 (some tests skipped) pass.
+1. Installs autopkgtest, LXC and the build dependencies from `debian/control` (`.github/actions/autopkgtest`, shared with the release workflow).
+2. Checks that the runner knows the series `resolute`, and lets the `lxcbr0` bridge forward traffic.
+3. Runs `./run-autopkgtest lxc resolute`. Exit status 0 and 2 (some tests skipped) pass.
 4. Uploads the autopkgtest logs.
 5. Builds the binary and source packages with `dpkg-buildpackage`. The build runs `tests/test_black`, `tests/test_flake8` and `tests/test_shellcheck` (`debian/rules`, `override_dh_auto_test`). It fails when the source package contains generated autopkgtest output.
 
