@@ -9,7 +9,7 @@ on:
       - '.github/**'
       - 'debian/changelog'
       - 'debian/copyright'
-      - 'README.md'
+      - '**.md'
       - 'Dockerfile'
   push:
     branches:
@@ -19,7 +19,7 @@ on:
       # Docs and release metadata only; the tag build validates release commits.
       - 'debian/changelog'
       - 'debian/copyright'
-      - 'README.md'
+      - '**.md'
       - 'Dockerfile'
 
 jobs:

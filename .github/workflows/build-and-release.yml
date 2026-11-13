@@ -203,7 +203,7 @@ jobs:
               '.entries[]? | select(.source_package_version == $version)' >/dev/null
           }
 
-          # Uploads only to the changelog series; copy to other series manually on Launchpad (see README.md).
+          # Uploads only to the changelog series; copy to other series manually on Launchpad (see README.md, Release process).
           source_pending=$(source_entries "$SERIES" Pending)
           source_published=$(source_entries "$SERIES" Published)
           source_all=$(source_entries "$SERIES")
