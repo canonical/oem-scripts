@@ -9,10 +9,14 @@ set -euo pipefail
 apt-get -q -q update
 apt-get full-upgrade --yes
 apt-get install --yes software-properties-common jq debian-archive-keyring distro-info openssh-client curl python3-yaml bind9-dnsutils jenkins-job-builder libdistro-info-perl
-add-apt-repository --yes ppa:oem-solutions-engineers/pc-enablement-tools
+for attempt in 1 2 3 4 5; do
+    add-apt-repository --yes ppa:oem-solutions-engineers/pc-enablement-tools && break
+    [ "$attempt" -lt 5 ] || exit 1
+    sleep $((attempt * 10))
+done
 apt-get --yes install --no-install-recommends oem-scripts colordiff rclone python3-jira
 rm -fr /var/lib/apt
-# Install yq from https://github.com/mikefarah/yq/
+# Install yq from https://github.com/mikefarah/yq/ and lp-api from https://github.com/fourdollars/lp-api
 curl -sSL https://raw.githubusercontent.com/fourdollars/scripts/master/golang.sh | bash -
 cat > /root/.bash_aliases <<ENDLINE
 # https://golang.org/
@@ -26,7 +30,8 @@ ENDLINE
 . /root/.bash_aliases
 rm /root/.bash_aliases
 go install -ldflags="-s -w" github.com/mikefarah/yq/v4@latest
+go install -ldflags="-s -w" github.com/fourdollars/lp-api@latest
 mkdir -p /usr/local/bin/
-cp -v /root/.local/share/go/bin/yq /usr/local/bin/
+cp -v /root/.local/share/go/bin/yq /root/.local/share/go/bin/lp-api /usr/local/bin/
 rm -fr /root/.local/share/go /root/.cache/go-build
 EOF
