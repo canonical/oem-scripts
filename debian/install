@@ -5,7 +5,6 @@ lp-api /usr/bin
 lp-dl-attm /usr/bin
 oem-meta-package.mir.jinja2 /usr/share/oem-scripts
 oem-meta-package.sru.jinja2 /usr/share/oem-scripts
-oem-metapackage-mir-check /usr/bin
 run-autopkgtest /usr/bin
 setup-apt-dir.sh /usr/bin
 local-repo /usr/bin
