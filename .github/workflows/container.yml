@@ -10,13 +10,13 @@ on:
     - cron: '17 * * * *'
   push:
     branches:
-      - master
+      - main
     paths:
       - 'Dockerfile'
       - '.github/workflows/container.yml'
   pull_request:
     branches:
-      - master
+      - main
     paths:
       - 'Dockerfile'
       - '.github/workflows/container.yml'
@@ -93,8 +93,8 @@ jobs:
       matrix:
         tag: ${{ fromJSON(needs.plan.outputs.tags) }}
     env:
-      # Only master publishes; pull requests and other branches only build.
-      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+      # Only main publishes; pull requests and other branches only build.
+      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
 

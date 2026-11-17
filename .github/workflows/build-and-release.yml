@@ -46,8 +46,8 @@ jobs:
             exit 1
           fi
 
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
-            printf 'Release tag %s must point to a commit reachable from master.\n' \
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            printf 'Release tag %s must point to a commit reachable from main.\n' \
               "$GITHUB_REF_NAME" >&2
             exit 1
           fi

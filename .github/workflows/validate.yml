@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
-      - master
+      - main
     paths-ignore:
       - '.github/**'
       - 'debian/changelog'
@@ -13,7 +13,7 @@ on:
       - 'Dockerfile'
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '.github/**'
       # Docs and release metadata only; the tag build validates release commits.
