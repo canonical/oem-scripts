@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: oem-scripts
-Source: https://code.launchpad.net/~oem-solutions-engineers/pc-enablement/+git/oem-scripts
+Source: https://github.com/canonical/oem-scripts
 
 Files: *
 Copyright: 2020 Canonical Limited

@@ -4,7 +4,7 @@ To release, see [Release process](README.md#release-process).
 
 ## Checks in CI
 
-`.github/workflows/validate.yml` runs on pull requests to `master` (not from forks), on pushes to `master`, and by manual dispatch (`workflow_dispatch`). It skips changes that only touch `.github/**`, `debian/changelog`, `debian/copyright` or Markdown files (`**.md`). The job:
+`.github/workflows/validate.yml` runs on pull requests to `main` (not from forks), on pushes to `main`, and by manual dispatch (`workflow_dispatch`). It skips changes that only touch `.github/**`, `debian/changelog`, `debian/copyright` or Markdown files (`**.md`). The job:
 
 1. Installs autopkgtest, LXC and the build dependencies from `debian/control` (`.github/actions/autopkgtest`, shared with the release workflow).
 2. Checks that the runner knows the series `resolute`, and lets the `lxcbr0` bridge forward traffic.

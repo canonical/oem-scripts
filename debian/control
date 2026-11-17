@@ -13,8 +13,8 @@ Build-Depends:
  shellcheck
 Standards-Version: 4.5.0
 Maintainer: Commercial Engineering <commercial-engineering@canonical.com>
-Vcs-Browser: https://code.launchpad.net/~oem-solutions-engineers/pc-enablement/+git/oem-scripts
-Vcs-Git: https://git.launchpad.net/~oem-solutions-engineers/pc-enablement/+git/oem-scripts
+Vcs-Browser: https://github.com/canonical/oem-scripts
+Vcs-Git: https://github.com/canonical/oem-scripts.git
 
 Package: oem-scripts
 Architecture: all
