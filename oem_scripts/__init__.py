@@ -147,6 +147,10 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
             prog = re.compile(
                 r"alias dmi:\*bvn([0-9a-zA-Z]+):bvr([0-9a-zA-Z]{3})\*(:pvr(.*)\*)? meta (.*)"
             )
+        elif project == "burlingame":
+            prog = re.compile(
+                r"alias dmi:\*:svnFramework:\*:rvnFramework:rn([0-9A-Z]+):\* meta (.*)"
+            )
         else:
             critical("This should not happen.")
             exit(1)
@@ -184,10 +188,13 @@ def _get_items_from_git(project: str, branch: str, pkg_name: str) -> tuple:
                             break
                 elif line.startswith("Description:"):
                     if (
-                        "Dell" in line or "HP" in line or "Lenovo" in line
+                        "Dell" in line
+                        or "HP" in line
+                        or "Lenovo" in line
+                        or "Framework" in line
                     ) and "(factory)" not in line:
                         prog = re.compile(
-                            r"Description: hardware support for (Dell|HP|Lenovo) (.*)"
+                            r"Description: hardware support for (Dell|HP|Lenovo|Framework) (.*)"
                         )
                         result = prog.match(line.strip())
                         market_name = result.group(2)
@@ -215,6 +222,10 @@ def _normalize_modaliases_ids(modaliases_path: str, project: str, pkg_name: str)
     elif project == "sutton":
         prog = re.compile(
             r"alias dmi:\*bvn([0-9a-zA-Z]+):bvr([0-9a-zA-Z]{3})\*(:pvr(.*)\*)? meta (.*)"
+        )
+    elif project == "burlingame":
+        prog = re.compile(
+            r"alias dmi:\*:svnFramework:\*:rvnFramework:rn([0-9A-Z]+):\* meta (.*)"
         )
     else:
         return None

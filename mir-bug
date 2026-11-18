@@ -69,7 +69,7 @@ create = subparsers.add_parser(
     "create",
     help="[-h] [-o=bugID|--output=bugID] oemCodename platformCodename deviceName",
 )
-create.add_argument("oemCodename", help="Such as somerville, stella, or sutton.simon")
+create.add_argument("oemCodename", help="Such as somerville, stella, burlingame, or sutton.simon")
 create.add_argument("platformCodename", help="Name deined by PM, like ace.")
 create.add_argument("deviceName", help="ThinkPad X1 Carbon Gen 8")
 create.add_argument(
@@ -1053,7 +1053,7 @@ def check_and_update_git_repo(
         # https://warthogs.atlassian.net/browse/CED-40
         # The first line of the "Description:" must be less than 80 characters long.
         # https://salsa.debian.org/lintian/lintian/-/blob/master/tags/s/synopsis-too-long.tag
-        # In pkg-oem-meta, the Codename will be "Dell", "HP" and "Lenovo"
+        # In pkg-oem-meta, the Codename will be "Dell", "HP", "Lenovo" and "Framework"
         # Description: hardware support for {Codename} {platformStr}
         #             |-------- 22 --------||--- 7 ---||--- 51 ----|
         # Description: hardware support for {Codename} {platformStr} (factory)
@@ -1148,6 +1148,8 @@ def check_and_update_git_repo(
         elif project == "stella":
             if group:
                 command.extend(["-g", group])
+            command.extend(ids)
+        elif project == "burlingame":
             command.extend(ids)
         elif project == "sutton":
             if group:

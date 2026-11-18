@@ -46,6 +46,16 @@ elif program_name == "pkg-sutton-meta":
         epilog=f"Ex. {program_name} -s focal -k linux-oem-20.04"
         " -g bachman -p banaing S08",
     )
+elif program_name == "pkg-burlingame-meta":
+    codename = "burlingame"
+    Codename = codename.title()
+    brand = "framework"
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter,
+        description=f"{Codename} platform meta package generator.",
+        epilog=f"Ex. {program_name} -s noble -k linux-oem-24.04"
+        " -p example FRANMJCP05",
+    )
 else:
     error("This program can not be executed.")
     exit(1)
@@ -117,6 +127,11 @@ elif codename == "sutton":
         help="First three chars in bios version, "
         + "such as S08 or bvnLENOVO:bvrS08:pvrThinkStation",
     )
+elif codename == "burlingame":
+    parser.add_argument("-p", "--platform", help="platform-codename", required=True)
+    parser.add_argument(
+        "board_name", nargs="+", help="DMI board name, such as FRANMJCP05"
+    )
 args = parser.parse_args()
 
 platform = args.platform.lower()
@@ -173,6 +188,14 @@ elif codename == "sutton":
         meta = "oem-" + codename + "-" + platform + "-meta"
         doc = "oem-" + codename + "-" + platform + "-doc"
 
+elif codename == "burlingame":
+    group = ""
+    for board_name in args.board_name:
+        if not re.match("[0-9a-zA-Z]+$", board_name):
+            error("Invalid board name: {%s}" % board_name)
+            exit(1)
+    meta = "oem-" + codename + "-" + platform + "-meta"
+
 if args.market_name:
     if codename == "somerville":
         Codename = "Dell"
@@ -180,6 +203,8 @@ if args.market_name:
         Codename = "HP"
     elif codename == "sutton":
         Codename = "Lenovo"
+    elif codename == "burlingame":
+        Codename = "Framework"
     if Platform.startswith(f"{Codename} "):
         Platform = remove_prefix(Platform, f"{Codename} ")
     if product_names:
@@ -297,7 +322,7 @@ def generate_debian_package(version, bootstrap=False, real=False):
                 factory_depends = (
                     factory_depends + ", oem-" + platform_archive + "-factory-meta"
                 )
-            if codename == "stella":
+            if codename == "stella" or codename == "burlingame":
                 extra = extra + ", oem-" + platform_archive + "-meta"
                 factory_depends = (
                     factory_depends + ", oem-" + platform_archive + "-factory-meta"
@@ -556,6 +581,14 @@ License: GPL-3
                     )
                 else:
                     f.write(f"alias dmi:*bvn{bios_vendor}:bvr{bios_ids}* meta {meta}\n")
+
+        elif "board_name" in vars(args).keys():
+            for board_name in args.board_name:
+                f.write(
+                    "alias dmi:*:svnFramework:*:rvnFramework:rn{0}:* meta {1}\n".format(
+                        board_name.upper(), meta
+                    )
+                )
 
     with open("rules", "w") as f:
         f.write("""#!/usr/bin/make -f

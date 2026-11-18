@@ -4,4 +4,5 @@ __pycache__/
 pkg-somerville-meta
 pkg-stella-meta
 pkg-sutton-meta
+pkg-burlingame-meta
 .omp/*

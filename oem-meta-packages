@@ -152,7 +152,7 @@ with open("/etc/os-release") as f:
             break
 parser.add_argument(
     "--use-cache",
-    help=f"Use cache from https://people.canonical.com/~oem-enablement/oem-meta-packages/oem-{{somerville,stella,sutton}}-*-meta-{series}.json to speed up the process. (experimental)",
+    help=f"Use cache from https://people.canonical.com/~oem-enablement/oem-meta-packages/oem-{{burlingame,somerville,stella,sutton}}-*-meta-{series}.json to speed up the process. (experimental)",
     action="store_true",
 )
 parser.add_argument(
@@ -409,6 +409,8 @@ def deal_with_description(git_dir, old, new, product_names, project) -> bool:
         customer = "HP"
     elif project == "sutton":
         customer = "Lenovo"
+    elif project == "burlingame":
+        customer = "Framework"
     else:
         print(f"{project} is not supported.")
         exit(1)
@@ -1335,6 +1337,8 @@ class OemFromPPA(OemMetaPkgInfo):
                     archive = oem_archive.getPPAByName(name=self.project)
             except lazr.restfulclient.errors.NotFound:
                 archive = oem_archive.getPPAByName(name=f"{self.project}-{self.group}")
+        elif self.project == "burlingame":
+            archive = oem_archive.getPPAByName(name=self.project)
         source_lists = "\n".join(lp.me.getArchiveSubscriptionURLs())
         while f"oem-archive/{archive.name}/ubuntu" not in source_lists:
             info(f"Subscribing ppa:oem-archive/{archive.name}")
@@ -1609,6 +1613,9 @@ class OemFromPublicArchive(OemMetaPkgInfo):
                 archive = f"sutton.{self.group}"
             else:
                 archive = self.project
+        elif self.project == "burlingame":
+            source_line = "http://framework.archive.canonical.com/"
+            archive = self.project
         oem_version = ""
         _run_command(
             [
@@ -1725,6 +1732,9 @@ def collect_pkg_info(
         elif project == "sutton":
             customer = "Lenovo"
             tag = ""
+        elif project == "burlingame":
+            customer = "Framework"
+            tag = ""
         else:
             print(f"{data} is not supported.")
             exit(1)
@@ -1754,6 +1764,9 @@ def collect_pkg_info(
             tag = ""
         elif project == "sutton":
             customer = "Lenovo"
+            tag = ""
+        elif project == "burlingame":
+            customer = "Framework"
             tag = ""
         else:
             print(f"{data} is not supported.")
@@ -1802,6 +1815,8 @@ def collect_pkg_info(
             branding = "HP"
         elif project == "sutton":
             branding = "Lenovo"
+        elif project == "burlingame":
+            branding = "Framework"
         else:
             error("f{project} is not supported yet.")
             exit(1)
@@ -1826,6 +1841,7 @@ def collect_pkg_info(
     somerville = dict()
     stella = dict()
     sutton = dict()
+    burlingame = dict()
 
     customer = json_data["Customer"].lower()
     platform = json_data["Platform"].lower()
@@ -1856,10 +1872,15 @@ def collect_pkg_info(
             lst = sutton.get(codename, [])
             lst.append(market_name)
             sutton[codename] = lst
+    elif "framework" in customer:
+        lst = burlingame.get(codename, [])
+        lst.append(market_name)
+        burlingame[codename] = lst
 
     debug(f"Somerville market names {somerville}")
     debug(f"Stella market names {stella}")
     debug(f"Sutton market names {sutton}")
+    debug(f"Burlingame market names {burlingame}")
 
     pkgNamesInArchive = get_oem_meta_packages(cache)
 
@@ -2000,6 +2021,40 @@ def collect_pkg_info(
                 )
             else:
                 pkgInfo[pkg_name].old_desc = f"Sutton {codename.title()} platform"
+
+    # Burlingame
+    for codename, v in burlingame.items():
+        pkg_name = "oem-burlingame-" + codename + "-meta"
+
+        meta = OemMetaPkg(pkg_name, index, config)
+
+        pkgInfo[pkg_name] = PkgInfo(
+            bootstrap=meta.bootstrap,
+            oem=meta.oem,
+            old_desc="",
+            new_desc="",
+            product_names=json_data["ProductNames"],
+        )
+
+        if pkg_name in pkgNamesInArchive and "".join(v):
+            new_desc = _grouping_market_names(v)
+            if "Framework" not in new_desc:
+                new_desc = "Framework " + new_desc
+            pkgInfo[pkg_name].old_desc = f"Burlingame {codename.title()} platform"
+            pkgInfo[pkg_name].new_desc = new_desc
+
+        if type(data) is not str and data.get("short_description"):
+            market_name = data.get("short_description")
+        elif meta.bootstrap.git.market_name:
+            market_name = meta.bootstrap.git.market_name
+        elif meta.oem.git.market_name:
+            market_name = meta.oem.git.market_name
+        else:
+            market_name = ""
+
+        if not pkgInfo[pkg_name].new_desc and market_name:
+            pkgInfo[pkg_name].new_desc = f"Framework {market_name}"
+            pkgInfo[pkg_name].old_desc = f"Burlingame {codename.title()} platform"
 
     debug(json.dumps(pkgInfo, indent=4, sort_keys=True, cls=CustomEncoder))
 
@@ -2288,6 +2343,8 @@ elif args.subcommand == "create":
             commands = ["pkg-sutton-meta", "-p", platform, "-g", group]
         else:
             commands = ["pkg-sutton-meta", "-p", platform]
+    elif project == "burlingame":
+        commands = ["pkg-burlingame-meta", "-p", platform]
     else:
         error(f"{project} is not supported yet.")
         exit(1)
@@ -2310,7 +2367,7 @@ elif args.subcommand == "create":
             commands.extend(["--market-name", platform_json["short_description"]])
         for product_name in platform_json["productnames"]:
             commands.extend(["--product-name", product_name])
-    if project == "somerville" or project == "stella":
+    if project in ("somerville", "stella", "burlingame"):
         for bios_id in platform_json["biosids"]:
             commands.append(bios_id)
     elif project == "sutton":
