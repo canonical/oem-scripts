@@ -44,6 +44,7 @@ from oem_scripts import (
     remove_prefix,
     yes_or_ask,
 )
+from oem_scripts.JiraLogin import get_jira_status
 from oem_scripts.LaunchpadLogin import LaunchpadLogin
 from oem_scripts.logging import setup_logging
 from tempfile import TemporaryDirectory
@@ -1344,6 +1345,11 @@ def handle_bug(lp, args, handler, overwrite_args=None):
             certified = False
         project = args.json["project"]
         for bug_id in args.json["certify-planning"]:
+            # check if it's a JIRA bug
+            if type(bug_id) is str and project.upper() in bug_id:
+                if get_jira_status(bug_id) != "Done":
+                    certified = False
+                continue
             bug = lp.bugs[bug_id]
             for task in bug.bug_tasks:
                 if task.bug_target_name == "certify-planning":
