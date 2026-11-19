@@ -3,7 +3,6 @@ from functools import lru_cache
 import os
 import requests
 
-
 JIRA_API_URL = "https://warthogs.atlassian.net/rest/api/2/"
 
 
