@@ -1,3 +1,13 @@
+oem-scripts (2.75) resolute; urgency=medium
+
+  * mir-bug: check Jira certification ticket status; add reusable Jira
+    authentication and status helpers in oem_scripts/JiraLogin.py.
+  * Migrate default branch from master to main; point debian/control
+    Vcs-* and debian/copyright Source at GitHub.
+  * Dockerfile: install lp-api and retry add-apt-repository.
+
+ -- Thomas Chen <thomas.chen@canonical.com>  Fri, 20 Nov 2026 14:37:01 +0800
+
 oem-scripts (2.74) resolute; urgency=medium
 
   * docs: Split README to several documents for readability
