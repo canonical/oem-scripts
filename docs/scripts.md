@@ -43,9 +43,6 @@ Scripts install to `/usr/bin` (except `config.sh`, see below). Most scripts prin
 - `mir-bug`: creates, checks, updates and collects the MIR bugs of OEM meta-packages (`create`, `check`, `update`, `collect`).
   Example: `mir-bug check PLATFORM_JSON`
   Requires: Launchpad credentials, network. `check` and `update` also use Git; `--skip` skips the Git part.
-- `oem-metapackage-mir-check`: compares a meta-package source package with the `oem-qemu-meta` reference package to check the MIR exception in https://wiki.ubuntu.com/MIRTeam/Exceptions/OEM.
-  Example: `oem-metapackage-mir-check PACKAGE.dsc`
-  Requires: `pull-lp-source`, `debdiff` (ubuntu-dev-tools, devscripts), network.
 - `pkg-oem-meta` (aliases: `pkg-somerville-meta`, `pkg-stella-meta`, `pkg-sutton-meta`): generates the source tree and Git repository of a Somerville (Dell), Stella (HP) or Sutton (Lenovo) platform meta-package. The program name selects the project; run under its own name, `pkg-oem-meta` exits with an error, so use an alias. One of `--private-bug` or `--jira` is required.
   Example: `pkg-sutton-meta -s noble -k linux-oem-24.04 -g bachman -p banaing --private-bug BUG_ID S08`
   Requires: `git`, `debcommit` (devscripts), `/etc/os-release`.
