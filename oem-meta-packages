@@ -1311,9 +1311,12 @@ class OemFromPPA(OemMetaPkgInfo):
             archive = oem_archive.getPPAByName(name=archive_name)
         elif self.project == "somerville":
             try:
-                archive = oem_archive.getPPAByName(
-                    name=f"{self.project}-{animal}-{self.platform}"
-                )
+                if series == "focal" or series == "jammy":
+                    archive = oem_archive.getPPAByName(
+                        name=f"{self.project}-{animal}-{self.platform}"
+                    )
+                else:
+                    archive = oem_archive.getPPAByName(name=self.project)
             except lazr.restfulclient.errors.NotFound:
                 archive = oem_archive.getPPAByName(
                     name=f"{self.project}-{self.platform}"
